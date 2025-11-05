@@ -3,25 +3,20 @@ import { useAuth } from './contexts/AuthContext';
 import LandingPage from './components/LandingPage';
 import SignUpPage from './components/SignUpPage';
 import SignInPage from './components/SignInPage';
-import Dashboard from './components/Dashboard';
 import LoadingSpinner from './components/LoadingSpinner';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('landing');
   const { user, loading, signIn, signUp, signOut, isAuthenticated } = useAuth();
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      setCurrentPage('dashboard');
-    } else {
-      setCurrentPage('landing');
-    }
-  }, [isAuthenticated]);
+  // Remove the useEffect that redirects to dashboard
+  // Users will stay on the landing page after authentication
 
   const handleSignIn = async (userData) => {
     const result = await signIn(userData);
     if (result.success) {
-      setCurrentPage('dashboard');
+      alert('Sign in successful! Welcome back.');
+      setCurrentPage('landing');
     } else {
       alert('Sign in failed: ' + result.error);
     }
@@ -30,7 +25,8 @@ function App() {
   const handleSignUp = async (userData) => {
     const result = await signUp(userData);
     if (result.success) {
-      setCurrentPage('dashboard');
+      alert('Registration successful! Please sign in to continue.');
+      setCurrentPage('signin');
     } else {
       alert('Sign up failed: ' + result.error);
     }
@@ -68,13 +64,6 @@ function App() {
             onClose={() => setCurrentPage('landing')}
             onNavigateToSignUp={() => setCurrentPage('signup')}
             onSignIn={handleSignIn}
-          />
-        );
-      case 'dashboard':
-        return (
-          <Dashboard
-            user={user}
-            onSignOut={handleSignOut}
           />
         );
       default:
