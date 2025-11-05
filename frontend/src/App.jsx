@@ -3,6 +3,7 @@ import { useAuth } from './contexts/AuthContext';
 import LandingPage from './components/LandingPage';
 import SignUpPage from './components/SignUpPage';
 import SignInPage from './components/SignInPage';
+import ChatPage from './components/ChatPage';
 import LoadingSpinner from './components/LoadingSpinner';
 
 function App() {
@@ -16,7 +17,7 @@ function App() {
     const result = await signIn(userData);
     if (result.success) {
       alert('Sign in successful! Welcome back.');
-      setCurrentPage('landing');
+      setCurrentPage('chat');
     } else {
       alert('Sign in failed: ' + result.error);
     }
@@ -66,6 +67,8 @@ function App() {
             onSignIn={handleSignIn}
           />
         );
+      case 'chat':
+        return <ChatPage />;
       default:
         return (
           <LandingPage 
