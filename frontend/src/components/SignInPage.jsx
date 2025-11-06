@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, Eye, EyeOff, X, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, X, Mail, Lock, ArrowRight, Github } from 'lucide-react';
 
 const SignInPage = ({ onClose, onNavigateToSignUp, onSignIn }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -25,61 +25,7 @@ const SignInPage = ({ onClose, onNavigateToSignUp, onSignIn }) => {
   };
 
   return (
-    <div className="min-h-screen bg-black flex">
-      {/* Left Side - Animated Background */}
-      <div className="hidden lg:block lg:w-1/2 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-gray-500/30 to-gray-800/30"></div>
-        <div className="absolute inset-0 backdrop-blur-3xl bg-gradient-to-br from-gray-900/80 via-black/80 to-gray-800/80"></div>
-        
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="relative">
-            <div className="w-96 h-96 rounded-full bg-gradient-to-br from-white to-gray-300 opacity-20 blur-3xl" 
-                 style={{ animation: 'float 6s ease-in-out infinite' }}></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-64 h-64 rounded-full border-4 border-white/30 flex items-center justify-center">
-                <div className="w-48 h-48 rounded-full border-4 border-gray-300/30 flex items-center justify-center">
-                  <div className="w-32 h-32 rounded-full bg-gradient-to-br from-white to-gray-400 shadow-2xl shadow-white/50 flex items-center justify-center">
-                    {[...Array(6)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="absolute w-3 h-3 bg-white rounded-full"
-                        style={{
-                          transform: `rotate(${i * 60}deg) translateY(-50px)`,
-                          animation: `pulse ${2 + i * 0.3}s ease-in-out infinite`
-                        }}
-                      ></div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="absolute inset-0 border-4 border-white/30 rounded-l-3xl"></div>
-
-        {/* Welcome Message */}
-        <div className="absolute bottom-20 left-12 right-12 text-center">
-          <h3 className="text-3xl font-bold text-white mb-4">Welcome Back!</h3>
-          <p className="text-gray-200/80 text-lg">
-            Continue your journey with cutting-edge AI solutions
-          </p>
-        </div>
-
-        <style>{`
-          @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
-          }
-          @keyframes pulse {
-            0%, 100% { opacity: 0.3; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.2); }
-          }
-        `}</style>
-      </div>
-
-      {/* Right Side - Sign In Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 relative bg-gradient-to-br from-black to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-black to-gray-900 flex items-center justify-center p-8 relative">
         <button
           onClick={onClose}
           className="absolute top-8 right-8 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:border-white/50 transition-all shadow-lg hover:shadow-white/20"
@@ -190,18 +136,9 @@ const SignInPage = ({ onClose, onNavigateToSignUp, onSignIn }) => {
             </button>
             
             <button className="w-full bg-white/10 backdrop-blur-sm border border-white/20 text-white py-3 rounded-xl font-medium hover:bg-white/20 hover:border-white/50 transition-all flex items-center justify-center gap-3">
-              <div className="w-6 h-6 bg-gradient-to-r from-gray-600 to-gray-800 rounded-full flex items-center justify-center text-white font-bold text-xs">
-                f
-              </div>
-              Continue with Facebook
+              <Github size={20} className="text-white" />
+              Continue with GitHub
             </button>
-          </div>
-
-          {/* Scroll Indicator */}
-          <div className="flex justify-center pt-4">
-            <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm border border-white/30 flex items-center justify-center shadow-lg shadow-white/20">
-              <ChevronDown className="text-white animate-bounce" size={20} />
-            </div>
           </div>
         </div>
 
@@ -217,7 +154,6 @@ const SignInPage = ({ onClose, onNavigateToSignUp, onSignIn }) => {
             }
           }
         `}</style>
-      </div>
     </div>
   );
 };

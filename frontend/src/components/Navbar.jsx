@@ -8,38 +8,32 @@ const Navbar = ({
   onNavigateToSignUp 
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [blogDropdownOpen, setBlogDropdownOpen] = useState(false);
 
   return (
     <nav className="absolute top-0 left-0 right-0 z-50 px-6 py-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-white to-gray-300 shadow-lg shadow-white/50"></div>
+          {/* Nexa Logo */}
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              {/* Logo Icon */}
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-white/90 via-gray-200 to-gray-300 shadow-lg shadow-white/30 flex items-center justify-center border border-white/20">
+                <div className="text-black font-bold text-lg">N</div>
+                {/* Glow effect */}
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/40 to-transparent opacity-60 animate-pulse"></div>
+              </div>
+              {/* Floating particles */}
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-white/80 rounded-full animate-pulse"></div>
+            </div>
+            
+            {/* Brand Text */}
+            <div className="text-white font-bold text-xl tracking-wide bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+              Nexa
+            </div>
+          </div>
           
           <div className="hidden md:flex items-center gap-6 text-sm">
-            {/* Blog Dropdown with Features */}
-            <div className="relative">
-              <button 
-                className="text-white hover:text-gray-300 transition flex items-center gap-1"
-                onClick={() => setBlogDropdownOpen(!blogDropdownOpen)}
-              >
-                Blog <ChevronDown size={16} />
-              </button>
-              {blogDropdownOpen && (
-                <div className="absolute top-full left-0 mt-2 w-52 bg-gray-800/90 backdrop-blur-sm rounded-lg border border-white/20 shadow-2xl">
-                  <div className="py-2">
-                    <div className="px-4 py-2 text-gray-400 text-xs font-semibold uppercase tracking-wide border-b border-white/10">Latest Posts</div>
-                    <a href="#" className="block px-4 py-2 text-white hover:bg-white/20 transition">AI Technology Trends 2025</a>
-                    <a href="#" className="block px-4 py-2 text-white hover:bg-white/20 transition">Machine Learning Breakthroughs</a>
-                    <a href="#" className="block px-4 py-2 text-white hover:bg-white/20 transition">Developer Insights</a>
-                    <a href="#" className="block px-4 py-2 text-white hover:bg-white/20 transition">Product Updates</a>
-                    <div className="px-4 py-2 text-gray-400 text-xs border-t border-white/10 mt-1">
-                      <a href="#" className="text-white hover:text-gray-300 transition">View All Articles →</a>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* Navigation items can go here if needed */}
           </div>
         </div>
 
