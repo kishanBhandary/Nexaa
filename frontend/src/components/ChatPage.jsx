@@ -1,24 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Mic, MicOff, Send, Settings, LogOut } from 'lucide-react';
+import { Mic, MicOff, Send, Settings, LogOut, Square } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 import VoiceWaveform from './VoiceWaveform';
 
 const ChatPage = () => {
   const { user, signOut } = useAuth();
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      text: `Hi ${user?.email?.split('@')[0] || 'there'}, how can I help you today?`,
-      sender: 'ai',
-      timestamp: new Date(),
-      userInitial: user?.email?.charAt(0).toUpperCase() || 'U'
-    }
-  ]);
+  const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [recognition, setRecognition] = useState(null);
+  const [speechSynthesis, setSpeechSynthesis] = useState(null);
+  const [hasSpokenWelcome, setHasSpokenWelcome] = useState(false);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -29,7 +23,7 @@ const ChatPage = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Initialize speech recognition
+  // Initialize speech recognition and synthesis
   useEffect(() => {
     if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -56,7 +50,69 @@ const ChatPage = () => {
       
       setRecognition(recognitionInstance);
     }
+
+    // Initialize Speech Synthesis
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      setSpeechSynthesis(window.speechSynthesis);
+    }
   }, []);
+
+  // Welcome message effect
+  useEffect(() => {
+    if (speechSynthesis && !hasSpokenWelcome) {
+      const timer = setTimeout(() => {
+        const welcomeMessage = `Hi ${user?.email?.split('@')[0] || 'there'}, I'm your AI voice assistant. How can I help you today?`;
+        speakText(welcomeMessage);
+        setHasSpokenWelcome(true);
+      }, 1000); // Wait 1 second after component mounts
+
+      return () => clearTimeout(timer);
+    }
+  }, [speechSynthesis, hasSpokenWelcome, user]);
+
+  const speakText = (text) => {
+    if (speechSynthesis) {
+      // Cancel any ongoing speech
+      speechSynthesis.cancel();
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.9;
+      utterance.pitch = 1.1;
+      utterance.volume = 0.8;
+      
+      // Find a female voice if available
+      const voices = speechSynthesis.getVoices();
+      const femaleVoice = voices.find(voice => 
+        voice.name.toLowerCase().includes('female') || 
+        voice.name.toLowerCase().includes('zira') ||
+        voice.name.toLowerCase().includes('samantha')
+      );
+      if (femaleVoice) {
+        utterance.voice = femaleVoice;
+      }
+      
+      utterance.onstart = () => {
+        setIsAiSpeaking(true);
+      };
+      
+      utterance.onend = () => {
+        setIsAiSpeaking(false);
+      };
+      
+      utterance.onerror = () => {
+        setIsAiSpeaking(false);
+      };
+      
+      speechSynthesis.speak(utterance);
+    }
+  };
+
+  const stopSpeaking = () => {
+    if (speechSynthesis) {
+      speechSynthesis.cancel();
+      setIsAiSpeaking(false);
+    }
+  };
 
   const handleSendMessage = () => {
     if (inputText.trim()) {
@@ -71,20 +127,40 @@ const ChatPage = () => {
       setMessages(prev => [...prev, userMessage]);
       setInputText('');
       
-      // Simulate AI thinking/speaking
-      setIsAiSpeaking(true);
+      // Generate AI response text (not displayed, only spoken)
+      const aiResponses = [
+        "I understand what you're saying. Let me think about that for a moment.",
+        "That's a really interesting question! Here's what I think about it.",
+        "I can definitely help you with that. Let me provide you with some insights.",
+        "Great question! I'll do my best to give you a helpful response.",
+        "I hear you clearly. Let me process your request and give you a thoughtful answer.",
+        "That's something I can assist with. Here's my perspective on the matter.",
+        "I appreciate you sharing that with me. Let me give you some useful information.",
+        "Thank you for asking. I have some ideas that might help you with this.",
+        "Interesting point! Let me break this down for you in a clear way.",
+        "I've been thinking about similar topics lately. Here's what I've learned."
+      ];
       
-      // Simulate AI response
+      // Add some contextual responses based on keywords
+      const userText = inputText.toLowerCase();
+      let selectedResponse;
+      
+      if (userText.includes('hello') || userText.includes('hi') || userText.includes('hey')) {
+        selectedResponse = "Hello there! It's great to hear from you. What can I help you with today?";
+      } else if (userText.includes('help') || userText.includes('assist')) {
+        selectedResponse = "I'm here to help! Tell me more about what you need assistance with.";
+      } else if (userText.includes('thank')) {
+        selectedResponse = "You're very welcome! I'm always happy to help. Is there anything else I can assist you with?";
+      } else if (userText.includes('how are you')) {
+        selectedResponse = "I'm doing wonderfully, thank you for asking! I'm here and ready to help with whatever you need.";
+      } else {
+        selectedResponse = aiResponses[Math.floor(Math.random() * aiResponses.length)];
+      }
+      
+      // Simulate thinking time then speak the response
       setTimeout(() => {
-        const aiMessage = {
-          id: messages.length + 2,
-          text: "I understand your message. This is a simulated AI response that demonstrates the chat interface functionality with enhanced styling and animations.",
-          sender: 'ai',
-          timestamp: new Date(),
-        };
-        setMessages(prev => [...prev, aiMessage]);
-        setIsAiSpeaking(false);
-      }, 2000);
+        speakText(selectedResponse);
+      }, 500);
     }
   };
 
@@ -115,10 +191,10 @@ const ChatPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white overflow-hidden">
+    <div className="fixed inset-0 bg-gradient-to-br from-black via-gray-900 to-black text-white">
       {/* Background Effects */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/20 via-black/40 to-gray-900/20"></div>
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/5 via-gray-900/30 to-black/90"></div>
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/5 via-gray-900/30 to-black/90"></div>
       
       {/* Header */}
       <header className="relative z-10 p-3 sm:p-4 border-b border-white/10 backdrop-blur-sm">
@@ -129,13 +205,23 @@ const ChatPage = () => {
             </div>
             <div>
               <h1 className="text-lg sm:text-xl font-semibold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-                Hi {user?.email?.split('@')[0] || 'there'}!
+                Voice Assistant
               </h1>
-              <p className="text-xs sm:text-sm text-gray-400">How can I help you today?</p>
+              <p className="text-xs sm:text-sm text-gray-400">
+                {isAiSpeaking ? 'AI is speaking...' : isListening ? 'Listening...' : 'Speak or type your message'}
+              </p>
             </div>
           </div>
           
           <div className="flex items-center space-x-2 sm:space-x-3">
+            {isAiSpeaking && (
+              <button 
+                onClick={stopSpeaking}
+                className="p-1.5 sm:p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 transition-colors text-red-400 hover:text-red-300"
+              >
+                <Square className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            )}
             <button className="p-1.5 sm:p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
               <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
@@ -149,28 +235,46 @@ const ChatPage = () => {
         </div>
       </header>
 
-      {/* Chat Container */}
-      <div className="relative z-10 flex flex-col h-[calc(100vh-64px)] sm:h-[calc(100vh-80px)]">
-        {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 max-w-4xl mx-auto w-full">
-          {messages.map((message) => (
-            <MessageBubble
-              key={message.id}
-              message={message}
-              isUser={message.sender === 'user'}
-            />
-          ))}
-          <div ref={messagesEndRef} />
+      {/* Main Content - Full Screen Centered */}
+      <div className="relative z-10 flex flex-col h-[calc(100vh-80px)]">
+        {/* Messages Area - Hidden scrollbars, centered content */}
+        <div className="flex-1 relative">
+          {/* Filter to show only user messages */}
+          {messages.filter(message => message.sender === 'user').length === 0 ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center space-y-6">
+                <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-r from-white/10 to-gray-300/10 flex items-center justify-center backdrop-blur-sm border border-white/20">
+                  <Mic className="w-10 h-10 text-white/60" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-medium text-white/80 mb-3">Ready to help</h3>
+                  <p className="text-sm text-gray-400 max-w-md leading-relaxed">
+                    I'll respond with voice only. Use the microphone or type your message to get started.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="absolute inset-0 p-4 space-y-4 max-w-4xl mx-auto w-full">
+              {messages.filter(message => message.sender === 'user').map((message) => (
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  isUser={true}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Voice Waveform Animation (Central) */}
+        {/* Voice Waveform Animation (Full Screen Overlay when active) */}
         <VoiceWaveform 
           isActive={isListening || isAiSpeaking} 
           type={isListening ? 'listening' : 'speaking'} 
         />
 
-        {/* Input Area */}
-        <div className="p-3 sm:p-4 border-t border-white/10 backdrop-blur-sm">
+        {/* Input Area - Fixed at bottom */}
+        <div className="relative z-20 p-3 sm:p-4 border-t border-white/10 backdrop-blur-sm">
           <div className="max-w-4xl mx-auto">
             <div className="flex items-end space-x-2 sm:space-x-4">
               {/* Voice Button */}
