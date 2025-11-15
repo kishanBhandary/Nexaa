@@ -48,6 +48,39 @@
   100% { transform: translateX(200%) rotate(45deg); opacity: 0; }
 }
 
+/* Media Button Breathing Animation */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.02); opacity: 0.9; }
+}
+
+.media-button {
+  animation: breathe 4s ease-in-out infinite;
+}
+
+.media-button:hover {
+  animation: none;
+}
+
+/* Gentle Pulse for Active States */
+@keyframes gentlePulse {
+  0%, 100% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+  50% { box-shadow: 0 0 0 10px transparent; opacity: 0.8; }
+}
+
+/* Smooth Scale Animation */
+.scale-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scale-hover:hover {
+  transform: scale(1.05);
+}
+
+.scale-hover:active {
+  transform: scale(0.95);
+}
+
 @keyframes prism {
   0% { transform: rotate(0deg) scale(1); }
   50% { transform: rotate(180deg) scale(1.1); }

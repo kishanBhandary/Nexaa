@@ -45,10 +45,34 @@ const MessageBubble = ({ message, isUser }) => {
             } transform rotate-45 border`}
           />
           
-          {/* Message Text */}
-          <p className="text-xs sm:text-sm leading-relaxed relative z-10 whitespace-pre-wrap">
-            {message.text}
-          </p>
+          {/* Message Content */}
+          {message.media ? (
+            <div className="relative z-10">
+              {message.mediaType === 'photo' ? (
+                <img 
+                  src={message.media} 
+                  alt="Shared image" 
+                  className="max-w-full max-h-64 rounded-lg border border-white/20 mb-2"
+                />
+              ) : message.mediaType === 'video' ? (
+                <video 
+                  src={message.media} 
+                  controls 
+                  className="max-w-full max-h-64 rounded-lg border border-white/20 mb-2"
+                />
+              ) : null}
+              {message.text && (
+                <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
+                  {message.text}
+                </p>
+              )}
+            </div>
+          ) : (
+            /* Message Text */
+            <p className="text-xs sm:text-sm leading-relaxed relative z-10 whitespace-pre-wrap">
+              {message.text}
+            </p>
+          )}
           
           {/* Timestamp */}
           <p className="text-[10px] sm:text-xs opacity-70 mt-1.5 sm:mt-2 relative z-10">

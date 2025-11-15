@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Mic, MicOff, Send, Settings, LogOut, Square } from 'lucide-react';
+import { Mic, MicOff, Send, Settings, LogOut, Square, Camera, Video, Image } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 import VoiceWaveform from './VoiceWaveform';
 
@@ -13,6 +13,10 @@ const ChatPage = () => {
   const [recognition, setRecognition] = useState(null);
   const [speechSynthesis, setSpeechSynthesis] = useState(null);
   const [hasSpokenWelcome, setHasSpokenWelcome] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState(null);
+  const [mediaType, setMediaType] = useState(null);
+  const fileInputRef = useRef(null);
+  const videoInputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -114,18 +118,48 @@ const ChatPage = () => {
     }
   };
 
+  const handlePhotoUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleVideoUpload = () => {
+    videoInputRef.current?.click();
+  };
+
+  const handleFileSelect = (event, type) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setSelectedMedia(e.target.result);
+        setMediaType(type);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const clearSelectedMedia = () => {
+    setSelectedMedia(null);
+    setMediaType(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (videoInputRef.current) videoInputRef.current.value = '';
+  };
+
   const handleSendMessage = () => {
-    if (inputText.trim()) {
+    if (inputText.trim() || selectedMedia) {
       const userMessage = {
         id: messages.length + 1,
         text: inputText.trim(),
         sender: 'user',
         timestamp: new Date(),
-        userInitial: user?.email?.charAt(0).toUpperCase() || 'U'
+        userInitial: user?.email?.charAt(0).toUpperCase() || 'U',
+        media: selectedMedia,
+        mediaType: mediaType
       };
       
       setMessages(prev => [...prev, userMessage]);
       setInputText('');
+      clearSelectedMedia();
       
       // Generate AI response text (not displayed, only spoken)
       const aiResponses = [
@@ -247,9 +281,9 @@ const ChatPage = () => {
                   <Mic className="w-10 h-10 text-white/60" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-medium text-white/80 mb-3">Ready to help</h3>
+                  <h3 className="text-xl font-medium text-white/80 mb-3">Ready to support you</h3>
                   <p className="text-sm text-gray-400 max-w-md leading-relaxed">
-                    I'll respond with voice only. Use the microphone or type your message to get started.
+                    I'll respond with voice only. Share through text, voice, photos, or videos to get started.
                   </p>
                 </div>
               </div>
@@ -276,20 +310,75 @@ const ChatPage = () => {
         {/* Input Area - Fixed at bottom */}
         <div className="relative z-20 p-3 sm:p-4 border-t border-white/10 backdrop-blur-sm">
           <div className="max-w-4xl mx-auto">
-            <div className="flex items-end space-x-2 sm:space-x-4">
+            {/* Media Preview */}
+            {selectedMedia && (
+              <div className="mb-3 p-3 bg-white/10 rounded-xl border border-white/20 backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-white/80">
+                    {mediaType === 'photo' ? '📷 Photo selected' : '🎥 Video selected'}
+                  </span>
+                  <button 
+                    onClick={clearSelectedMedia}
+                    className="text-red-400 hover:text-red-300 text-sm"
+                  >
+                    Remove
+                  </button>
+                </div>
+                {mediaType === 'photo' ? (
+                  <img 
+                    src={selectedMedia} 
+                    alt="Selected" 
+                    className="max-h-32 rounded-lg border border-white/20"
+                  />
+                ) : (
+                  <video 
+                    src={selectedMedia} 
+                    className="max-h-32 rounded-lg border border-white/20" 
+                    controls
+                  />
+                )}
+              </div>
+            )}
+            
+            <div className="flex items-end space-x-2 sm:space-x-3">
+              {/* Photo Upload Button */}
+              <button
+                onClick={handlePhotoUpload}
+                className="media-button scale-hover p-2.5 sm:p-3 rounded-full transition-all duration-300 flex-shrink-0 bg-gradient-to-r from-white/70 to-gray-300/70 text-black hover:shadow-lg hover:shadow-white/40"
+                style={{
+                  filter: 'drop-shadow(0 0 10px rgba(255, 255, 255, 0.3))'
+                }}
+                title="Upload Photo"
+              >
+                <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+
+              {/* Video Upload Button */}
+              <button
+                onClick={handleVideoUpload}
+                className="media-button scale-hover p-2.5 sm:p-3 rounded-full transition-all duration-300 flex-shrink-0 bg-gradient-to-r from-white/60 to-gray-400/60 text-black hover:shadow-lg hover:shadow-white/30"
+                style={{
+                  filter: 'drop-shadow(0 0 10px rgba(255, 255, 255, 0.25))'
+                }}
+                title="Upload Video"
+              >
+                <Video className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+
               {/* Voice Button */}
               <button
                 onClick={toggleVoiceRecording}
-                className={`p-2.5 sm:p-3 rounded-full transition-all duration-300 flex-shrink-0 ${
+                className={`scale-hover p-2.5 sm:p-3 rounded-full transition-all duration-300 flex-shrink-0 ${
                   isListening 
                     ? 'bg-red-500 shadow-lg shadow-red-500/50 scale-110' 
-                    : 'bg-gradient-to-r from-white/80 to-gray-300 text-black hover:shadow-lg hover:shadow-white/50'
+                    : 'bg-gradient-to-r from-white/80 to-gray-300 text-black hover:shadow-lg hover:shadow-white/50 media-button'
                 }`}
                 style={{
                   filter: isListening 
                     ? 'drop-shadow(0 0 20px rgba(239, 68, 68, 0.6))' 
                     : 'drop-shadow(0 0 10px rgba(255, 255, 255, 0.4))'
                 }}
+                title={isListening ? "Stop Recording" : "Start Voice Recording"}
               >
                 {isListening ? (
                   <MicOff className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
@@ -304,19 +393,35 @@ const ChatPage = () => {
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Type your message..."
+                  placeholder="Share your thoughts safely..."
                   className="w-full p-2.5 sm:p-3 pr-10 sm:pr-12 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent resize-none min-h-[44px] sm:min-h-[50px] max-h-32 text-sm sm:text-base"
                   rows="1"
                 />
                 <button
                   onClick={handleSendMessage}
-                  disabled={!inputText.trim()}
+                  disabled={!inputText.trim() && !selectedMedia}
                   className="absolute right-1.5 sm:right-2 top-1/2 transform -translate-y-1/2 p-1.5 sm:p-2 rounded-lg bg-gradient-to-r from-white/80 to-gray-300 text-black hover:from-white hover:to-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
               </div>
             </div>
+
+            {/* Hidden File Inputs */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={(e) => handleFileSelect(e, 'photo')}
+              className="hidden"
+            />
+            <input
+              ref={videoInputRef}
+              type="file"
+              accept="video/*"
+              onChange={(e) => handleFileSelect(e, 'video')}
+              className="hidden"
+            />
           </div>
         </div>
       </div>
