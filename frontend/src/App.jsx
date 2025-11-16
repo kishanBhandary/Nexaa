@@ -16,7 +16,10 @@ function App() {
   const handleSignIn = async (userData) => {
     const result = await signIn(userData);
     if (result.success) {
-      alert('Sign in successful! Welcome back.');
+      const message = userData.type === 'google' 
+        ? `Welcome back, ${userData.userInfo?.name || 'User'}! Successfully signed in with Google.`
+        : 'Sign in successful! Welcome back.';
+      alert(message);
       setCurrentPage('chat');
     } else {
       alert('Sign in failed: ' + result.error);
@@ -26,8 +29,11 @@ function App() {
   const handleSignUp = async (userData) => {
     const result = await signUp(userData);
     if (result.success) {
-      alert('Registration successful! Please sign in to continue.');
-      setCurrentPage('signin');
+      const message = userData.type === 'google' 
+        ? `Welcome, ${userData.userInfo?.name || 'User'}! Your account has been created with Google.`
+        : 'Registration successful! Welcome to our platform.';
+      alert(message);
+      setCurrentPage('chat');
     } else {
       alert('Sign up failed: ' + result.error);
     }
