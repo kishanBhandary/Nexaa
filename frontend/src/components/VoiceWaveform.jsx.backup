@@ -1,0 +1,599 @@
+import React, { useEffect, useRef } from 'react';
+
+const VoiceWaveform = ({ isActive, type = 'listening', isInline = false }) => {
+  const canvasRef = useRef(null);
+  const animationRef = useRef(null);
+  const timeRef = useRef(0);
+  const waveDataRef = useRef([]);
+  const particlesRef = useRef([]);
+  
+  useEffect(() => {
+    if (!isActive || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    
+    // Set canvas size to match container with high DPI support
+    const updateCanvasSize = () => {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      canvas.style.width = rect.width + 'px';
+      canvas.style.height = rect.height + 'px';
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+    };
+    
+    updateCanvasSize();
+    window.addEventListener('resize', updateCanvasSize);
+
+    // Add roundRect polyfill for older browsers
+    if (!ctx.roundRect) {
+      ctx.roundRect = function(x, y, width, height, radius) {
+        this.beginPath();
+        this.moveTo(x + radius, y);
+        this.lineTo(x + width - radius, y);
+        this.quadraticCurveTo(x + width, y, x + width, y + radius);
+        this.lineTo(x + width, y + height - radius);
+        this.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        this.lineTo(x + radius, y + height);
+        this.quadraticCurveTo(x, y + height, x, y + height - radius);
+        this.lineTo(x, y + radius);
+        this.quadraticCurveTo(x, y, x + radius, y);
+        this.closePath();
+      };
+    }
+
+    // Initialize sophisticated wave system
+    const numWaves = isInline ? 60 : 120;
+    const numParticles = isInline ? 15 : 40;
+    
+    // Initialize wave data for more organic movement
+    if (waveDataRef.current.length === 0 || waveDataRef.current.length !== numWaves) {
+      waveDataRef.current = Array.from({ length: numWaves }, (_, i) => ({
+        height: 0.1 + Math.random() * 0.3,
+        targetHeight: 0.1 + Math.random() * 0.3,
+        velocity: 0,
+        phase: Math.random() * Math.PI * 2,
+        frequency: 0.015 + Math.random() * 0.025,
+        offsetX: (i / numWaves) * Math.PI * 2,
+        energy: Math.random()
+      }));
+    }
+
+    // Initialize floating particles
+    if (particlesRef.current.length === 0) {
+      particlesRef.current = Array.from({ length: numParticles }, () => ({
+        x: Math.random(),
+        y: Math.random(),
+        vx: (Math.random() - 0.5) * 0.002,
+        vy: (Math.random() - 0.5) * 0.002,
+        size: 0.5 + Math.random() * 2,
+        life: Math.random(),
+        opacity: Math.random() * 0.8,
+        hue: Math.random() * 60
+      }));
+    }
+
+    const animate = () => {
+      timeRef.current += 0.016; // 60fps timing
+      
+      const width = canvas.width / window.devicePixelRatio;
+      const height = canvas.height / window.devicePixelRatio;
+      const centerX = width / 2;
+      const centerY = height / 2;
+      
+      // Clear with subtle trail effect for inline, full clear for fullscreen
+      if (isInline) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+        ctx.fillRect(0, 0, width, height);
+      } else {
+        // Create dynamic gradient background
+        const bgGradient = ctx.createRadialGradient(
+          centerX, centerY, 0,
+          centerX, centerY, Math.max(width, height)
+        );
+        
+        if (type === 'listening') {
+          bgGradient.addColorStop(0, 'rgba(15, 23, 42, 0.95)'); // slate-900
+          bgGradient.addColorStop(0.4, 'rgba(30, 41, 59, 0.9)'); // slate-800  
+          bgGradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
+        } else {
+          bgGradient.addColorStop(0, 'rgba(5, 46, 22, 0.95)'); // emerald-900
+          bgGradient.addColorStop(0.4, 'rgba(6, 78, 59, 0.9)'); // emerald-800
+          bgGradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
+        }
+        
+        ctx.fillStyle = bgGradient;
+        ctx.fillRect(0, 0, width, height);
+      }
+      
+      // Enhanced wave configuration
+      const waveConfig = isInline ? (
+        type === 'listening' 
+        ? {
+            intensity: 0.8,
+            speed: 0.6,
+            primaryColor: '#60A5FA', // blue-400
+            secondaryColor: '#3B82F6', // blue-500
+            accentColor: '#93C5FD', // blue-300
+            glowColor: 'rgba(96, 165, 250, 0.4)',
+            maxHeight: height * 0.6,
+            baseWidth: 2,
+            energyMultiplier: 1.0
+          }
+        : {
+            intensity: 1.0,
+            speed: 0.8,
+            primaryColor: '#34D399', // emerald-400
+            secondaryColor: '#10B981', // emerald-500
+            accentColor: '#6EE7B7', // emerald-300
+            glowColor: 'rgba(52, 211, 153, 0.4)',
+            maxHeight: height * 0.7,
+            baseWidth: 2,
+            energyMultiplier: 1.2
+          }
+      ) : (
+        type === 'listening' 
+        ? {
+            intensity: 2.0,
+            speed: 1.0,
+            primaryColor: '#3B82F6',
+            secondaryColor: '#1E40AF', // blue-800
+            accentColor: '#93C5FD', // blue-300
+            glowColor: 'rgba(59, 130, 246, 0.8)',
+            maxHeight: height * 0.25,
+            baseWidth: 4,
+            energyMultiplier: 2.2
+          }
+        : {
+            intensity: 2.5,
+            speed: 1.4,
+            primaryColor: '#FFFFFF',
+            secondaryColor: '#F3F4F6', // gray-100
+            accentColor: '#E5E7EB', // gray-200
+            glowColor: 'rgba(255, 255, 255, 0.9)',
+            maxHeight: height * 0.35,
+            baseWidth: 4,
+            energyMultiplier: 2.8
+          }
+      );
+      
+      // Update wave physics with more sophisticated movement
+      waveDataRef.current.forEach((wave, i) => {
+        const normalizedIndex = i / (numWaves - 1);
+        
+        // Create complex wave interactions
+        const baseWave = Math.sin(timeRef.current * waveConfig.speed + wave.offsetX);
+        const harmonic1 = Math.sin(timeRef.current * waveConfig.speed * 1.618 + wave.phase) * 0.6;
+        const harmonic2 = Math.sin(timeRef.current * waveConfig.speed * 0.618 + normalizedIndex * Math.PI) * 0.4;
+        const breathingEffect = Math.sin(timeRef.current * 0.5) * 0.2 + 0.8;
+        
+        // Create center-focused energy distribution
+        const centerDistance = Math.abs(normalizedIndex - 0.5) * 2;
+        const centerBoost = Math.pow(1 - centerDistance, 2) * waveConfig.energyMultiplier;
+        
+        wave.targetHeight = Math.abs(baseWave + harmonic1 + harmonic2) * 
+                          waveConfig.intensity * centerBoost * breathingEffect * 0.4 + 0.05;
+        
+        // Smooth interpolation with momentum
+        const heightDiff = wave.targetHeight - wave.height;
+        wave.velocity += heightDiff * 0.015 - wave.velocity * 0.1;
+        wave.height += wave.velocity;
+        
+        // Update energy for particle interactions
+        wave.energy = Math.abs(wave.velocity) + wave.height * 0.5;
+      });
+      
+      const waveSpacing = width / (numWaves + 1);
+      
+      // Draw sophisticated waveform
+      if (isInline) {
+        // Simple, clean inline waveform
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = waveConfig.glowColor;
+        
+        waveDataRef.current.forEach((wave, i) => {
+          const x = (i + 1) * waveSpacing;
+          const waveHeight = Math.max(wave.height * waveConfig.maxHeight, 3);
+          const barWidth = Math.min(waveSpacing * 0.6, 3);
+          
+          // Simple gradient bar
+          const barGradient = ctx.createLinearGradient(x, centerY - waveHeight/2, x, centerY + waveHeight/2);
+          barGradient.addColorStop(0, waveConfig.accentColor + 'AA');
+          barGradient.addColorStop(0.5, waveConfig.primaryColor + 'FF');
+          barGradient.addColorStop(1, waveConfig.secondaryColor + 'AA');
+          
+          ctx.fillStyle = barGradient;
+          
+          // Draw simple rounded bar
+          ctx.beginPath();
+          ctx.roundRect(
+            x - barWidth / 2,
+            centerY - waveHeight / 2,
+            barWidth,
+            waveHeight,
+            barWidth / 2
+          );
+          ctx.fill();
+        });
+        
+        ctx.shadowBlur = 0;
+      } else {
+        // Complex full-screen waveform (existing code)
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = waveConfig.glowColor;
+      // Draw sophisticated waveform
+      if (isInline) {
+        // Simple, clean inline waveform
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = waveConfig.glowColor;
+        
+        waveDataRef.current.forEach((wave, i) => {
+          const x = (i + 1) * waveSpacing;
+          const waveHeight = Math.max(wave.height * waveConfig.maxHeight, 3);
+          const barWidth = Math.min(waveSpacing * 0.6, 3);
+          
+          // Simple gradient bar
+          const barGradient = ctx.createLinearGradient(x, centerY - waveHeight/2, x, centerY + waveHeight/2);
+          barGradient.addColorStop(0, waveConfig.accentColor + 'AA');
+          barGradient.addColorStop(0.5, waveConfig.primaryColor + 'FF');
+          barGradient.addColorStop(1, waveConfig.secondaryColor + 'AA');
+          
+          ctx.fillStyle = barGradient;
+          
+          // Draw simple rounded bar
+          ctx.beginPath();
+          ctx.roundRect(
+            x - barWidth / 2,
+            centerY - waveHeight / 2,
+            barWidth,
+            waveHeight,
+            barWidth / 2
+          );
+          ctx.fill();
+        });
+        
+        ctx.shadowBlur = 0;
+        
+        // Add subtle particles for inline mode
+        particlesRef.current.slice(0, 8).forEach(particle => {
+          particle.x += particle.vx;
+          particle.y += particle.vy;
+          particle.life += 0.01;
+          
+          if (particle.x < 0) particle.x = 1;
+          if (particle.x > 1) particle.x = 0;
+          if (particle.y < 0) particle.y = 1;
+          if (particle.y > 1) particle.y = 0;
+          
+          const particleX = particle.x * width;
+          const particleY = particle.y * height;
+          const alpha = 0.3 + Math.sin(particle.life * 2) * 0.2;
+          
+          ctx.fillStyle = `${waveConfig.primaryColor}${Math.floor(alpha * 255).toString(16).padStart(2, '0')}`;
+          ctx.beginPath();
+          ctx.arc(particleX, particleY, 1, 0, Math.PI * 2);
+          ctx.fill();
+          
+          if (particle.life > 2 * Math.PI) {
+            particle.life = 0;
+          }
+        });
+      } else {
+        // Complex full-screen waveform
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = waveConfig.glowColor;
+        
+        // Draw background wave (softer, wider)
+        ctx.globalCompositeOperation = 'screen';
+        ctx.lineWidth = waveConfig.baseWidth * 3;
+        ctx.strokeStyle = waveConfig.glowColor.replace('0.6)', '0.2)').replace('0.8)', '0.25)').replace('0.9)', '0.3)');
+        
+        ctx.beginPath();
+        waveDataRef.current.forEach((wave, i) => {
+          const x = (i + 1) * waveSpacing;
+          const waveHeight = wave.height * waveConfig.maxHeight;
+          const y1 = centerY - waveHeight / 2;
+          
+          if (i === 0) {
+            ctx.moveTo(x, y1);
+          } else {
+            const prevX = i * waveSpacing;
+            const prevWave = waveDataRef.current[i - 1];
+            const prevHeight = prevWave.height * waveConfig.maxHeight;
+            const prevY1 = centerY - prevHeight / 2;
+            
+            ctx.quadraticCurveTo(prevX + waveSpacing / 2, prevY1, x, y1);
+          }
+        });
+        ctx.stroke();
+        
+        // Draw main wave with gradient
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.lineWidth = waveConfig.baseWidth;
+        
+        const mainGradient = ctx.createLinearGradient(0, centerY - waveConfig.maxHeight/2, 0, centerY + waveConfig.maxHeight/2);
+        mainGradient.addColorStop(0, waveConfig.accentColor);
+        mainGradient.addColorStop(0.5, waveConfig.primaryColor);
+        mainGradient.addColorStop(1, waveConfig.secondaryColor);
+        
+        ctx.strokeStyle = mainGradient;
+        
+        ctx.beginPath();
+        waveDataRef.current.forEach((wave, i) => {
+          const x = (i + 1) * waveSpacing;
+          const waveHeight = wave.height * waveConfig.maxHeight;
+          const y = centerY - waveHeight / 2;
+          
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        });
+        ctx.stroke();
+        
+        // Draw individual energy bars with enhanced effects
+        ctx.shadowBlur = 15;
+        waveDataRef.current.forEach((wave, i) => {
+          const x = (i + 1) * waveSpacing;
+          const waveHeight = wave.height * waveConfig.maxHeight;
+          const barWidth = Math.min(waveSpacing * 0.6, 6);
+          
+          // Create bar gradient
+          const barGradient = ctx.createLinearGradient(x, centerY - waveHeight/2, x, centerY + waveHeight/2);
+          barGradient.addColorStop(0, waveConfig.accentColor + '99');
+          barGradient.addColorStop(0.3, waveConfig.primaryColor + 'CC');
+          barGradient.addColorStop(0.7, waveConfig.primaryColor + 'CC');
+          barGradient.addColorStop(1, waveConfig.secondaryColor + '99');
+          
+          ctx.fillStyle = barGradient;
+          ctx.shadowColor = waveConfig.glowColor;
+          
+          // Draw rounded bar
+          const barHeight = Math.max(waveHeight, 4);
+          ctx.beginPath();
+          ctx.roundRect(
+            x - barWidth / 2,
+            centerY - barHeight / 2,
+            barWidth,
+            barHeight,
+            barWidth / 2
+          );
+          ctx.fill();
+          
+          // Add energy caps for high-energy bars
+          if (wave.energy > 0.7) {
+            ctx.fillStyle = waveConfig.accentColor + 'FF';
+            ctx.beginPath();
+            ctx.arc(x, centerY - waveHeight / 2, barWidth / 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x, centerY + waveHeight / 2, barWidth / 3, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        });
+        
+        ctx.shadowBlur = 0;
+        
+        // Enhanced floating particles with physics
+        particlesRef.current.forEach(particle => {
+          // Update physics
+          particle.x += particle.vx;
+          particle.y += particle.vy;
+          particle.life += 0.008;
+          
+          // Wrap around edges
+          if (particle.x < 0) particle.x = 1;
+          if (particle.x > 1) particle.x = 0;
+          if (particle.y < 0) particle.y = 1;
+          if (particle.y > 1) particle.y = 0;
+          
+          // Calculate interaction with nearby waves
+          const waveIndex = Math.floor(particle.x * numWaves);
+          const nearbyWave = waveDataRef.current[waveIndex];
+          const waveInfluence = nearbyWave ? nearbyWave.energy * 0.3 : 0;
+          
+          // Add subtle wave-based movement
+          particle.vx += (Math.random() - 0.5) * waveInfluence * 0.0001;
+          particle.vy += (Math.random() - 0.5) * waveInfluence * 0.0001;
+          
+          // Damping
+          particle.vx *= 0.998;
+          particle.vy *= 0.998;
+          
+          // Dynamic opacity based on wave energy
+          const dynamicOpacity = (particle.opacity + waveInfluence * 0.5) * 
+                                (0.7 + Math.sin(particle.life * 3) * 0.3);
+          
+          // Draw particle with dynamic color
+          const particleX = particle.x * width;
+          const particleY = particle.y * height;
+          
+          ctx.globalCompositeOperation = 'screen';
+          ctx.fillStyle = `hsla(${
+            type === 'listening' ? '220' : '150'
+          }, 70%, ${60 + particle.hue}%, ${dynamicOpacity})`;
+          
+          ctx.shadowBlur = particle.size * 8;
+          ctx.shadowColor = waveConfig.glowColor;
+          
+          ctx.beginPath();
+          ctx.arc(particleX, particleY, particle.size * (1 + waveInfluence), 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Reset particle lifecycle
+          if (particle.life > 2 * Math.PI) {
+            particle.life = 0;
+            particle.hue = Math.random() * 60;
+            particle.opacity = Math.random() * 0.8;
+          }
+        });
+        
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.shadowBlur = 0;
+        
+        // Add energy rings for full-screen mode
+        const numRings = type === 'listening' ? 3 : 4;
+        for (let ring = 0; ring < numRings; ring++) {
+          const baseRadius = 40 + ring * 35;
+          const pulseRadius = baseRadius + Math.sin(timeRef.current * (1.2 - ring * 0.2)) * 15;
+          const ringOpacity = (0.15 - ring * 0.03) * 
+                            (1 + Math.sin(timeRef.current * 2 + ring * 0.8) * 0.3);
+          
+          ctx.strokeStyle = waveConfig.glowColor.replace(/[\d.]+\)/, `${ringOpacity})`);
+          ctx.lineWidth = 2 + ring * 0.5;
+          
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, pulseRadius, 0, Math.PI * 2);
+          ctx.stroke();
+          
+          // Add ring highlights
+          if (ring === 0) {
+            ctx.strokeStyle = waveConfig.accentColor + '40';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+        }
+      }
+      
+      animationRef.current = requestAnimationFrame(animate);
+    };
+    
+    // Start the animation
+    animate();
+    
+    return () => {
+      window.removeEventListener('resize', updateCanvasSize);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [isActive, type, isInline]);
+
+  if (!isActive) return null;
+
+  // Inline mode for chat bubbles
+  if (isInline) {
+    return (
+      <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
+        <canvas
+          ref={canvasRef}
+          className="w-full h-full"
+        />
+      </div>
+    );
+  }
+
+  // Full-screen mode (welcome message only)
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+      {/* Light transparent background */}
+      <div 
+        className={`absolute inset-0 transition-all duration-1000 ${
+          type === 'listening' 
+            ? 'bg-slate-900/10' 
+            : 'bg-emerald-900/10'
+        }`}
+        style={{
+          backdropFilter: 'blur(5px)',
+        }}
+      />
+      
+      {/* Main Wave Container */}
+      <div className="relative w-full h-full max-w-4xl max-h-screen flex items-center justify-center">
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 w-full h-full"
+          style={{
+            filter: 'contrast(1.0) brightness(0.8)'
+          }}
+        />
+        
+        {/* Center Content */}
+        <div className="relative z-10 text-center">
+          <div className="mb-12">
+            {/* AI Avatar */}
+            <div className="relative mb-8">
+              <div 
+                className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center transition-all duration-700 ${
+                  type === 'listening' 
+                    ? 'bg-gradient-to-br from-blue-500/15 via-blue-600/20 to-blue-700/15 border border-blue-400/30' 
+                    : 'bg-gradient-to-br from-emerald-500/15 via-emerald-600/20 to-emerald-700/15 border border-emerald-400/30'
+                }`}
+                style={{
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: type === 'listening' 
+                    ? '0 0 15px rgba(59, 130, 246, 0.2)' 
+                    : '0 0 15px rgba(16, 185, 129, 0.2)'
+                }}
+              >
+                <span className="text-xl font-bold text-white/80">
+                  AI
+                </span>
+              </div>
+              
+              {/* Single ring animation */}
+              <div 
+                className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full border animate-ping ${
+                  type === 'listening' ? 'border-blue-400/20' : 'border-emerald-400/20'
+                }`}
+                style={{
+                  animationDuration: '3s'
+                }}
+              />
+            </div>
+            
+            {/* Typography */}
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-light mb-4 tracking-wide">
+              <span 
+                className={`text-transparent bg-clip-text ${
+                  type === 'listening' 
+                    ? 'bg-gradient-to-r from-blue-300 to-blue-400' 
+                    : 'bg-gradient-to-r from-emerald-300 to-emerald-400'
+                }`}
+              >
+                AI Assistant
+              </span>
+            </h2>
+            
+            <div className="space-y-3">
+              <p className={`text-base sm:text-lg font-light ${
+                type === 'listening' ? 'text-blue-300/80' : 'text-emerald-300/80'
+              }`}>
+                {type === 'listening' ? 'Listening...' : 'Speaking...'}
+              </p>
+              
+              <p className="text-sm text-gray-400/60 font-light">
+                {type === 'listening' 
+                  ? 'Share your thoughts' 
+                  : 'Providing responses'
+                }
+              </p>
+            </div>
+          </div>
+          
+          {/* Status dots */}
+          <div className="flex justify-center space-x-2">
+            {[0, 1, 2].map(dot => (
+              <div 
+                key={dot}
+                className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                  type === 'listening' ? 'bg-blue-400/60' : 'bg-emerald-400/60'
+                }`}
+                style={{
+                  animationDelay: `${dot * 0.2}s`,
+                  animationDuration: '2s'
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default VoiceWaveform;
