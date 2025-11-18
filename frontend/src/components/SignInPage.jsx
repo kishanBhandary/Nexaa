@@ -80,7 +80,7 @@ const SignInPage = ({ onClose, onNavigateToSignUp, onSignIn }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800 flex items-center justify-center p-8 relative overflow-hidden">
+    <div className="h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800 flex items-center justify-center p-4 relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -inset-10 opacity-20">
           <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-white rounded-full mix-blend-multiply filter blur-xl animate-blob"></div>
@@ -96,18 +96,18 @@ const SignInPage = ({ onClose, onNavigateToSignUp, onSignIn }) => {
         <X size={20} />
       </button>
 
-      <div className="relative z-10 w-full max-w-md space-y-8" style={{ animation: 'fadeInUp 0.8s ease-out' }}>
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-r from-gray-800 to-black mb-4">
-            <Shield className="w-8 h-8 text-white" />
+      <div className="relative z-10 w-full max-w-md space-y-4" style={{ animation: 'fadeInUp 0.8s ease-out' }}>
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-r from-gray-800 to-black mb-2">
+            <Shield className="w-6 h-6 text-white" />
           </div>
-          <h2 className="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-200 to-gray-300">
+          <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-200 to-gray-300">
             Welcome Back
           </h2>
-          <p className="text-gray-300 text-lg">
+          <p className="text-gray-300 text-base">
             Sign in to continue your journey
           </p>
-          <p className="text-gray-400">
+          <p className="text-gray-400 text-sm">
             Don't have an account?{' '}
             <button
               onClick={onNavigateToSignUp}
@@ -118,10 +118,10 @@ const SignInPage = ({ onClose, onNavigateToSignUp, onSignIn }) => {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="group">
-            <label className="block text-white text-sm mb-3 font-medium flex items-center gap-2">
-              <Mail size={16} className="text-white" />
+            <label className="block text-white text-sm mb-2 font-medium flex items-center gap-2">
+              <Mail size={14} className="text-white" />
               Email Address
             </label>
             <input
@@ -129,14 +129,14 @@ const SignInPage = ({ onClose, onNavigateToSignUp, onSignIn }) => {
               placeholder="Enter your email address"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full bg-white/5 backdrop-blur-sm border-2 border-white/20 text-white placeholder-gray-400 py-4 px-6 rounded-2xl focus:border-white focus:outline-none transition-all duration-300"
+              className="w-full bg-white/5 backdrop-blur-sm border-2 border-white/20 text-white placeholder-gray-400 py-3 px-4 rounded-xl focus:border-white focus:outline-none transition-all duration-300"
               required
             />
           </div>
 
           <div className="group">
-            <label className="block text-white text-sm mb-3 font-medium flex items-center gap-2">
-              <Lock size={16} className="text-white" />
+            <label className="block text-white text-sm mb-2 font-medium flex items-center gap-2">
+              <Lock size={14} className="text-white" />
               Password
             </label>
             <div className="relative">
@@ -145,15 +145,15 @@ const SignInPage = ({ onClose, onNavigateToSignUp, onSignIn }) => {
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full bg-white/5 backdrop-blur-sm border-2 border-white/20 text-white placeholder-gray-400 py-4 px-6 pr-12 rounded-2xl focus:border-white focus:outline-none transition-all duration-300"
+                className="w-full bg-white/5 backdrop-blur-sm border-2 border-white/20 text-white placeholder-gray-400 py-3 px-4 pr-10 rounded-xl focus:border-white focus:outline-none transition-all duration-300"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
               >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
           </div>
@@ -170,7 +170,7 @@ const SignInPage = ({ onClose, onNavigateToSignUp, onSignIn }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-gradient-to-r from-black to-gray-800 hover:from-gray-900 hover:to-gray-700 border-2 border-white text-white py-4 px-6 rounded-2xl font-medium transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-white/25"
+            className="w-full bg-gradient-to-r from-black to-gray-800 hover:from-gray-900 hover:to-gray-700 border-2 border-white text-white py-3 px-4 rounded-xl font-medium transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-white/25"
           >
             {isLoading ? (
               <>

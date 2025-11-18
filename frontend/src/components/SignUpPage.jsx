@@ -115,7 +115,7 @@ const SignUpPage = ({ onClose, onNavigateToSignIn, onSignUp }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800 flex items-center justify-center p-8 relative overflow-hidden">
+    <div className="h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800 flex items-center justify-center p-2 relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -inset-10 opacity-20">
           <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-white rounded-full mix-blend-multiply filter blur-xl animate-blob"></div>
@@ -126,96 +126,96 @@ const SignUpPage = ({ onClose, onNavigateToSignIn, onSignUp }) => {
 
       <button
         onClick={onClose}
-        className="absolute top-8 right-8 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:border-white/50 transition-all shadow-lg hover:shadow-white/20 z-10"
+        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:border-white/50 transition-all shadow-lg hover:shadow-white/20 z-10"
       >
-        <X size={20} />
+        <X size={16} />
       </button>
 
-      <div className="relative z-10 w-full max-w-md space-y-8" style={{ animation: 'fadeInUp 0.8s ease-out' }}>
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-r from-gray-800 to-black mb-4">
-            <UserPlus className="w-8 h-8 text-white" />
+      <div className="relative z-10 w-full max-w-sm space-y-2" style={{ animation: 'fadeInUp 0.8s ease-out' }}>
+        <div className="text-center space-y-1">
+          <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-r from-gray-800 to-black mb-1">
+            <UserPlus className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-200 to-gray-300">
+          <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-200 to-gray-300">
             Join Us
           </h2>
-          <p className="text-gray-300 text-lg">
+          <p className="text-gray-300 text-xs">
             Create your account and start your journey
           </p>
-          <p className="text-gray-400">
+          <p className="text-gray-400 text-xs">
             Already have an account?{' '}
             <button 
               onClick={onNavigateToSignIn}
-              className="text-white hover:text-gray-300 font-medium transition underline decoration-2 underline-offset-4"
+              className="text-white hover:text-gray-300 font-medium transition underline decoration-1 underline-offset-2"
             >
               Sign in here!
             </button>
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-2">
           <div className="group">
-            <label className="block text-white text-sm mb-3 font-medium flex items-center gap-2">
-              <Mail size={16} className="text-white" />
-              Email Address
+            <label className="block text-white text-xs mb-1 font-medium flex items-center gap-1">
+              <Mail size={12} className="text-white" />
+              Email
             </label>
             <input
               type="email"
-              placeholder="Enter your email address"
+              placeholder="Enter your email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full bg-white/5 backdrop-blur-sm border-2 border-white/20 text-white placeholder-gray-400 py-4 px-6 rounded-2xl focus:border-white focus:outline-none transition-all duration-300"
+              className="w-full bg-white/5 backdrop-blur-sm border border-white/20 text-white placeholder-gray-400 py-2 px-3 rounded-lg focus:border-white focus:outline-none transition-all duration-300 text-sm"
               required
             />
           </div>
 
           <div className="group">
-            <label className="block text-white text-sm mb-3 font-medium flex items-center gap-2">
-              <User size={16} className="text-white" />
+            <label className="block text-white text-xs mb-1 font-medium flex items-center gap-1">
+              <User size={12} className="text-white" />
               Username
             </label>
             <input
               type="text"
-              placeholder="Choose a username"
+              placeholder="Choose username"
               value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-              className="w-full bg-white/5 backdrop-blur-sm border-2 border-white/20 text-white placeholder-gray-400 py-4 px-6 rounded-2xl focus:border-white focus:outline-none transition-all duration-300"
+              className="w-full bg-white/5 backdrop-blur-sm border border-white/20 text-white placeholder-gray-400 py-2 px-3 rounded-lg focus:border-white focus:outline-none transition-all duration-300 text-sm"
               required
             />
           </div>
 
           <div className="group">
-            <label className="block text-white text-sm mb-3 font-medium flex items-center gap-2">
-              <Lock size={16} className="text-white" />
+            <label className="block text-white text-xs mb-1 font-medium flex items-center gap-1">
+              <Lock size={12} className="text-white" />
               Password
             </label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Create a strong password"
+                placeholder="Create password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full bg-white/5 backdrop-blur-sm border-2 border-white/20 text-white placeholder-gray-400 py-4 px-6 pr-12 rounded-2xl focus:border-white focus:outline-none transition-all duration-300"
+                className="w-full bg-white/5 backdrop-blur-sm border border-white/20 text-white placeholder-gray-400 py-2 px-3 pr-8 rounded-lg focus:border-white focus:outline-none transition-all duration-300 text-sm"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
               >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>
             {formData.password && (
-              <div className="mt-2 space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+              <div className="mt-1">
+                <div className="flex items-center gap-1">
+                  <div className="flex-1 h-1 bg-gray-700 rounded-full overflow-hidden">
                     <div 
                       className={`h-full transition-all duration-300 ${getStrengthColor()}`}
                       style={{ width: `${(passwordStrength / 5) * 100}%` }}
                     />
                   </div>
-                  <span className={`text-sm font-medium ${passwordStrength <= 1 ? 'text-red-400' : passwordStrength <= 3 ? 'text-yellow-400' : 'text-green-400'}`}>
+                  <span className={`text-xs font-medium ${passwordStrength <= 1 ? 'text-red-400' : passwordStrength <= 3 ? 'text-yellow-400' : 'text-green-400'}`}>
                     {getStrengthText()}
                   </span>
                 </div>
@@ -224,64 +224,64 @@ const SignUpPage = ({ onClose, onNavigateToSignIn, onSignUp }) => {
           </div>
 
           <div className="group">
-            <label className="block text-white text-sm mb-3 font-medium flex items-center gap-2">
-              <CheckCircle size={16} className="text-white" />
-              Confirm Password
+            <label className="block text-white text-xs mb-1 font-medium flex items-center gap-1">
+              <CheckCircle size={12} className="text-white" />
+              Confirm
             </label>
             <div className="relative">
               <input
                 type={showConfirmPassword ? 'text' : 'password'}
-                placeholder="Confirm your password"
+                placeholder="Confirm password"
                 value={formData.confirmPassword}
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                className={`w-full bg-white/5 backdrop-blur-sm border-2 ${
+                className={`w-full bg-white/5 backdrop-blur-sm border ${
                   formData.confirmPassword && formData.password === formData.confirmPassword 
                     ? 'border-green-500' 
                     : formData.confirmPassword 
                     ? 'border-red-500' 
                     : 'border-white/20'
-                } text-white placeholder-gray-400 py-4 px-6 pr-12 rounded-2xl focus:border-white focus:outline-none transition-all duration-300`}
+                } text-white placeholder-gray-400 py-2 px-3 pr-8 rounded-lg focus:border-white focus:outline-none transition-all duration-300 text-sm`}
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
               >
-                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                {showConfirmPassword ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>
             {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-              <p className="text-red-400 text-sm mt-1">Passwords do not match</p>
+              <p className="text-red-400 text-xs mt-0.5">Passwords do not match</p>
             )}
           </div>
 
           <button
             type="submit"
             disabled={isLoading || formData.password !== formData.confirmPassword || passwordStrength < 3}
-            className="w-full bg-gradient-to-r from-black to-gray-800 hover:from-gray-900 hover:to-gray-700 border-2 border-white text-white py-4 px-6 rounded-2xl font-medium transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-white/25"
+            className="w-full bg-gradient-to-r from-black to-gray-800 hover:from-gray-900 hover:to-gray-700 border border-white text-white py-2.5 px-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-white/25 text-sm"
           >
             {isLoading ? (
               <>
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                Creating Account...
+                <div className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin"></div>
+                Creating...
               </>
             ) : (
               <>
-                <Zap size={20} />
+                <Zap size={14} />
                 Create Account
               </>
             )}
           </button>
         </form>
 
-        <div className="space-y-4">
+        <div className="space-y-2">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-600"></div>
             </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-transparent text-gray-400 font-medium">or continue with</span>
+            <div className="relative flex justify-center text-xs">
+              <span className="px-2 bg-transparent text-gray-400 font-medium">or continue with</span>
             </div>
           </div>
 
@@ -301,22 +301,22 @@ const SignUpPage = ({ onClose, onNavigateToSignIn, onSignUp }) => {
               }
             }}
             disabled={googleLoading}
-            className="w-full bg-gray-800 hover:bg-gray-700 border-2 border-gray-600 hover:border-gray-500 text-white py-4 px-6 rounded-2xl font-medium transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+            className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-600 hover:border-gray-500 text-white py-2 px-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center">
+            <div className="w-3 h-3 bg-white rounded-full flex items-center justify-center">
               <span className="text-gray-800 font-bold text-xs">G</span>
             </div>
-            {googleLoading ? 'Creating account with Google...' : 'Sign up with Google'}
+            <span className="text-xs">{googleLoading ? 'Creating...' : 'Google'}</span>
           </button>
 
           {/* GitHub Button */}
           <button 
             onClick={handleGitHubSignUp}
             disabled={githubLoading}
-            className="w-full bg-gray-800 hover:bg-gray-700 border-2 border-gray-600 hover:border-gray-500 text-white py-4 px-6 rounded-2xl font-medium transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+            className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-600 hover:border-gray-500 text-white py-2 px-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            <Github size={20} className="text-white" />
-            {githubLoading ? 'Redirecting to GitHub...' : 'Sign up with GitHub'}
+            <Github size={14} className="text-white" />
+            <span className="text-xs">{githubLoading ? 'Redirecting...' : 'GitHub'}</span>
           </button>
 
           {/* Hidden Google button for actual functionality */}
@@ -326,11 +326,11 @@ const SignUpPage = ({ onClose, onNavigateToSignIn, onSignUp }) => {
           />
         </div>
 
-        <div className="mt-8 text-center">
-          <div className="flex items-center justify-center gap-2 text-gray-400 text-sm">
-            <Sparkles size={16} className="text-white" />
+        <div className="text-center mt-2">
+          <div className="flex items-center justify-center gap-1 text-gray-400 text-xs">
+            <Sparkles size={10} className="text-white" />
             <span>Free • Secure • No Spam</span>
-            <Sparkles size={16} className="text-white" />
+            <Sparkles size={10} className="text-white" />
           </div>
         </div>
       </div>

@@ -9,10 +9,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 function App() {
   const [currentPage, setCurrentPage] = useState('landing');
   const { user, loading, signIn, signUp, signOut, isAuthenticated } = useAuth();
-
-  // Remove the useEffect that redirects to dashboard
-  // Users will stay on the landing page after authentication
-
+  
   const handleSignIn = async (userData) => {
     const result = await signIn(userData);
     if (result.success) {
