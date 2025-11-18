@@ -5,17 +5,25 @@ import SignUpPage from './components/SignUpPage';
 import SignInPage from './components/SignInPage';
 import ChatPage from './components/ChatPage';
 import LoadingSpinner from './components/LoadingSpinner';
+import mlService from './services/mlService';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('landing');
-  const { user, loading, signIn, signUp, signOut, isAuthenticated } = useAuth();
+  const { user, loading, signIn, signUp, signOut, isAuthenticated, token } = useAuth();
+  
+  // Initialize ML service with auth token when available
+  useEffect(() => {
+    if (token) {
+      mlService.setAuthToken(token);
+    }
+  }, [token]);
   
   const handleSignIn = async (userData) => {
     const result = await signIn(userData);
     if (result.success) {
       const message = userData.type === 'google' 
-        ? `Welcome back, ${userData.userInfo?.name || 'User'}! Successfully signed in with Google.`
-        : 'Sign in successful! Welcome back.';
+        ? `Welcome back, ${userData.userInfo?.name || 'User'}! Ready to chat with Nexa!`
+        : 'Welcome back! Nexa is excited to chat with you.';
       alert(message);
       setCurrentPage('chat');
     } else {
@@ -27,8 +35,8 @@ function App() {
     const result = await signUp(userData);
     if (result.success) {
       const message = userData.type === 'google' 
-        ? `Welcome, ${userData.userInfo?.name || 'User'}! Your account has been created with Google.`
-        : 'Registration successful! Welcome to our platform.';
+        ? `Welcome, ${userData.userInfo?.name || 'User'}! Let's start chatting with Nexa!`
+        : 'Welcome to Nexa! Your AI companion is ready to chat.';
       alert(message);
       setCurrentPage('chat');
     } else {
@@ -71,7 +79,12 @@ function App() {
           />
         );
       case 'chat':
-        return <ChatPage />;
+        return (
+          <ChatPage 
+            user={user}
+            onSignOut={handleSignOut}
+          />
+        );
       default:
         return (
           <LandingPage 

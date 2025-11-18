@@ -177,31 +177,25 @@ const ChatPage = () => {
   const generatePersonalizedWelcome = (emotion, userName) => {
     switch (emotion.toLowerCase()) {
       case 'happy':
-        return `Nexa here, ${userName}! I can see that beautiful smile! Your happiness is absolutely radiant. What's bringing you such joy today? I'd love to celebrate with you!`;
+        return `I can see that beautiful smile, ${userName}! Your happiness is absolutely radiant. What's bringing you such joy today? I'd love to celebrate with you!`;
         
       case 'sad':
-        return `Nexa here, ${userName}. I can see there's some sadness in your expression. You're brave for being here, and I want you to know that you're not alone. What's been weighing on your heart?`;
+        return `${userName}, I can see there's some sadness in your expression. You're brave for being here, and I want you to know that you're not alone. What's been weighing on your heart?`;
         
       case 'angry':
-        return `Nexa speaking, ${userName}. I can sense some frustration. Those feelings are completely valid, and I'm here to listen. Take a deep breath with me - you're safe here. What's been bothering you?`;
+        return `${userName}, I can sense some frustration. Those feelings are completely valid, and I'm here to listen. Take a deep breath with me - you're safe here. What's been bothering you?`;
         
       case 'fear':
-        return `Nexa here, ${userName}. I notice some worry in your expression. Remember that you're stronger than you know, and you don't have to face anything alone. What's been on your mind?`;
-
-      case 'surprise':
-        return `Nexa here, ${userName}! I can see some excitement in your expression! Something wonderful must have happened. Share what's got you so amazed!`;
-
-      case 'disgust':
-        return `Nexa speaking, ${userName}. I can sense something is bothering you deeply. Your feelings are completely valid. Let's talk about what's troubling you.`;
+        return `${userName}, I notice some worry in your expression. Remember that you're stronger than you know, and you don't have to face anything alone. What's been on your mind?`;
         
       default:
-        return `Nexa here, ${userName}! I can see you have a calm, thoughtful presence. I'm here with advanced emotion understanding, ready to listen to whatever you'd like to share. How are you feeling today?`;
+        return `${userName}, I can see you have a calm, thoughtful presence. I'm here and ready to listen to whatever you'd like to share. How are you feeling today?`;
     }
   };
 
   const fallbackGreeting = (userName) => {
     setTimeout(() => {
-      speakText(`Nexa here, ${userName}! I'm excited to chat with you using advanced emotion recognition. How are you feeling today?`);
+      speakText(`Hello ${userName}! I'm excited to chat with you. How are you feeling today?`);
     }, 1000);
   };
 
@@ -316,108 +310,41 @@ const ChatPage = () => {
   const generateEmotionalResponse = (emotion, userName, userText) => {
     const text = userText.toLowerCase();
     
-    // Generate contextual response based on user's text content
-    const contextualResponse = generateContextualResponse(userText, userName);
-    
-    // Add emotion-aware empathy based on detected emotion
-    const emotionalEmpathy = generateEmotionalEmpathy(emotion, userName);
-    
-    // Combine both for a complete ChatGPT-like response
-    return `Nexa here, ${userName}! ${contextualResponse} ${emotionalEmpathy}`;
-  };
-
-  const generateContextualResponse = (userText, userName) => {
-    const text = userText.toLowerCase();
-    
-    // Question handling
-    if (text.includes('?') || text.startsWith('how') || text.startsWith('what') || text.startsWith('why') || text.startsWith('when') || text.startsWith('where')) {
-      if (text.includes('weather')) {
-        return "I'd recommend checking a weather app for the most accurate forecast. Weather can really affect our mood, doesn't it?";
-      } else if (text.includes('time')) {
-        return `It's ${new Date().toLocaleTimeString()}. Time has a way of putting things in perspective.`;
-      } else if (text.includes('help') || text.includes('advice')) {
-        return "I'm here to help! While I'm an AI focused on emotional support, I'll do my best to guide you.";
-      } else if (text.includes('feel') || text.includes('emotion')) {
-        return "Feelings are complex and valid. I'm designed to understand and respond to emotions, so please share what's on your mind.";
-      } else {
-        return "That's a thoughtful question! While I specialize in emotional support, I can sense there's something deeper you're exploring.";
-      }
-    }
-    
-    // Work/Career topics
-    if (text.includes('work') || text.includes('job') || text.includes('career') || text.includes('boss')) {
-      return "Work can be both rewarding and challenging. Finding balance and purpose in what we do is so important for our wellbeing.";
-    }
-    
-    // Relationship topics
-    if (text.includes('friend') || text.includes('family') || text.includes('relationship') || text.includes('love')) {
-      return "Relationships are at the heart of human experience. They bring joy, growth, and sometimes challenges that help us learn about ourselves.";
-    }
-    
-    // Health/Wellness
-    if (text.includes('tired') || text.includes('sleep') || text.includes('health') || text.includes('sick')) {
-      return "Taking care of your physical health is so important for emotional wellbeing too. Rest and self-care aren't luxuries - they're necessities.";
-    }
-    
-    // Learning/Education
-    if (text.includes('learn') || text.includes('study') || text.includes('school') || text.includes('course')) {
-      return "Learning is a beautiful journey! Every new piece of knowledge opens doors to understanding ourselves and the world better.";
-    }
-    
-    // Technology/AI
-    if (text.includes('ai') || text.includes('technology') || text.includes('computer') || text.includes('robot')) {
-      return "Technology like AI can be fascinating! I'm here as your emotional companion, using AI to better understand and support you.";
-    }
-    
-    // Goals/Dreams
-    if (text.includes('dream') || text.includes('goal') || text.includes('future') || text.includes('plan')) {
-      return "Dreams and goals give our lives direction and meaning. What you're sharing sounds important to you.";
-    }
-    
-    // Problem/Issues
-    if (text.includes('problem') || text.includes('issue') || text.includes('difficult') || text.includes('hard')) {
-      return "Challenges are part of life's journey. Sometimes talking through problems helps us see new perspectives and solutions.";
-    }
-    
-    // Gratitude/Positivity
-    if (text.includes('thank') || text.includes('grateful') || text.includes('appreciate') || text.includes('amazing')) {
-      return "Your gratitude and positivity are wonderful to hear! These moments of appreciation are so valuable.";
-    }
-    
-    // General life topics
-    if (text.includes('life') || text.includes('world') || text.includes('people')) {
-      return "Life is full of experiences that shape who we are. Your perspective on things is unique and valuable.";
-    }
-    
-    // Default response for general conversation
-    return "I hear what you're saying, and it sounds meaningful to you.";
-  };
-
-  const generateEmotionalEmpathy = (emotion, userName) => {
     switch (emotion.toLowerCase()) {
       case 'angry':
-        return "I can sense some frustration in your words. It's completely valid to feel this way, and I'm here to listen without judgment.";
+        return [
+          `${userName}, I can sense some frustration in your words. Take a deep breath - you're safe here with me. What's really bothering you?`,
+          `It sounds like you're feeling angry right now, ${userName}. That's completely valid. Let's talk through what's happening.`,
+          `I notice you might be upset, ${userName}. Remember, anger is just an emotion passing through. How can I help you feel calmer?`
+        ][Math.floor(Math.random() * 3)];
         
       case 'sad':
-        return "I notice some sadness in what you've shared. You don't have to carry these feelings alone - I'm here with you.";
+        return [
+          `${userName}, I can hear some sadness in your message. It's okay to feel this way - you don't have to carry it alone.`,
+          `I sense you might be feeling down, ${userName}. Remember, tough times don't last, but resilient people like you do.`,
+          `Your sadness is valid, ${userName}. Sometimes talking helps - what's been weighing on your heart?`
+        ][Math.floor(Math.random() * 3)];
         
       case 'fear':
-        return "I can detect some worry or concern. Remember, you're stronger than you know, and it's okay to feel uncertain sometimes.";
+        return [
+          `${userName}, I can sense some worry. You're safe here, and whatever you're facing, you don't have to face it alone.`,
+          `It sounds like something might be making you anxious, ${userName}. Remember, courage isn't the absence of fear.`,
+          `I notice some concern in your words, ${userName}. What's been on your mind that's causing worry?`
+        ][Math.floor(Math.random() * 3)];
         
       case 'happy':
-        return "Your joy really comes through in your message! It's wonderful to share in your positive energy.";
-        
-      case 'surprise':
-        return "I can sense some excitement or amazement in your words! It's delightful when life brings us unexpected moments.";
-        
-      case 'disgust':
-        return "I can tell something is really bothering you. Your feelings are completely valid, and it's important to acknowledge them.";
-        
-      case 'neutral':
-        return "You seem thoughtful and composed. I appreciate you sharing your thoughts with me.";
+        return [
+          `${userName}, I love the positive energy in your message! Your happiness is contagious and brightens my day too!`,
+          `What wonderful joy I can hear in your words, ${userName}! It's beautiful to see you in such a great mood.`,
+          `Your happiness shines through, ${userName}! Keep that beautiful energy flowing.`
+        ][Math.floor(Math.random() * 3)];
         
       default:
-        return "I'm here to listen and understand whatever you're experiencing.";
+        if (text.includes('hello') || text.includes('hi') || text.includes('hey')) {
+          return `Hello ${userName}! I'm here and ready to listen. What's on your mind today?`;
+        } else {
+          return `Thank you for sharing that, ${userName}. I'm here to listen. How are you feeling right now?`;
+        }
     }
   };
 
@@ -493,8 +420,8 @@ const ChatPage = () => {
                     </div>
                     <span className="font-medium">
                       {lastDetectedEmotion ? 
-                        `Nexa responding with empathy (detected: ${lastDetectedEmotion.emotion} ${lastDetectedEmotion.emoji})...` : 
-                        'Nexa is speaking...'
+                        `Responding with empathy (detected: ${lastDetectedEmotion.emotion} ${lastDetectedEmotion.emoji})...` : 
+                        'AI is speaking...'
                       }
                     </span>
                   </div>
@@ -507,11 +434,11 @@ const ChatPage = () => {
                   <div className="flex items-center space-x-2">
                     <span className="text-lg">{lastDetectedEmotion.emoji}</span>
                     <span className="text-gray-400">
-                      Last emotion: {lastDetectedEmotion.emotion} • NexaModel V2 (82% accuracy)
+                      Last emotion: {lastDetectedEmotion.emotion} • Ready to help you
                     </span>
                   </div>
                 ) : (
-                  <span className="text-gray-400">NexaModel V2 - High-Accuracy Emotion AI Ready</span>
+                  <span className="text-gray-400">Ready to help you</span>
                 )}
               </p>
             </div>

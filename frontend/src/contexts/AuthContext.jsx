@@ -15,6 +15,9 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState(null);
+
+  const API_BASE_URL = 'http://localhost:8080';
 
   useEffect(() => {
     // Check for GitHub OAuth callback
@@ -64,6 +67,7 @@ export const AuthProvider = ({ children }) => {
       try {
         const parsedUser = JSON.parse(savedUser);
         setUser(parsedUser);
+        setToken(savedToken);
         
         // Validate token with backend
         validateToken(savedToken).catch(() => {
@@ -71,6 +75,7 @@ export const AuthProvider = ({ children }) => {
           localStorage.removeItem('user');
           localStorage.removeItem('token');
           setUser(null);
+          setToken(null);
         });
       } catch (error) {
         localStorage.removeItem('user');
@@ -98,10 +103,10 @@ export const AuthProvider = ({ children }) => {
 
   const signIn = async (userData) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setLoading(true);
       
       let userWithId;
+      let authToken = 'demo-token-' + Date.now(); // For demo purposes
       
       if (userData.type === 'google') {
         // Handle Google OAuth login
@@ -110,6 +115,7 @@ export const AuthProvider = ({ children }) => {
           id: userInfo.sub,
           email: userInfo.email,
           username: userInfo.name,
+          name: userInfo.name,
           avatar: userInfo.picture,
           googleId: userInfo.sub,
           joinedDate: new Date().toISOString(),
@@ -135,6 +141,7 @@ export const AuthProvider = ({ children }) => {
         userWithId = {
           ...userData,
           id: Date.now(),
+          name: userData.email.split('@')[0],
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.email)}&background=06b6d4&color=fff`,
           joinedDate: new Date().toISOString(),
           lastActive: new Date().toISOString(),
@@ -142,9 +149,10 @@ export const AuthProvider = ({ children }) => {
         };
       }
       
-      setUser(userInfo);
-      localStorage.setItem('user', JSON.stringify(userInfo));
-      localStorage.setItem('token', data.token);
+      setUser(userWithId);
+      setToken(authToken);
+      localStorage.setItem('user', JSON.stringify(userWithId));
+      localStorage.setItem('token', authToken);
       
       return { success: true };
     } catch (error) {
@@ -157,10 +165,10 @@ export const AuthProvider = ({ children }) => {
 
   const signUp = async (userData) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setLoading(true);
       
       let userWithId;
+      let authToken = 'demo-token-' + Date.now(); // For demo purposes
       
       if (userData.type === 'google') {
         // Handle Google OAuth signup
@@ -169,6 +177,7 @@ export const AuthProvider = ({ children }) => {
           id: userInfo.sub,
           email: userInfo.email,
           username: userInfo.name,
+          name: userInfo.name,
           avatar: userInfo.picture,
           googleId: userInfo.sub,
           joinedDate: new Date().toISOString(),
@@ -194,6 +203,7 @@ export const AuthProvider = ({ children }) => {
         userWithId = {
           ...userData,
           id: Date.now(),
+          name: userData.username,
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.username)}&background=8b5cf6&color=fff`,
           joinedDate: new Date().toISOString(),
           lastActive: new Date().toISOString(),
@@ -202,7 +212,10 @@ export const AuthProvider = ({ children }) => {
       }
       
       setUser(userWithId);
+      setToken(authToken);
       localStorage.setItem('user', JSON.stringify(userWithId));
+      localStorage.setItem('token', authToken);
+      
       return { success: true };
     } catch (error) {
       console.error('Sign up error:', error);
@@ -219,6 +232,7 @@ export const AuthProvider = ({ children }) => {
     }
     
     setUser(null);
+    setToken(null);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
   };
@@ -233,13 +247,14 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
+    token,
     loading,
     signIn,
     signUp,
     signOut,
     updateProfile,
     isAuthenticated: !!user,
-    getToken: () => localStorage.getItem('token'),
+    getToken: () => token || localStorage.getItem('token'),
     validateToken
   };
 
