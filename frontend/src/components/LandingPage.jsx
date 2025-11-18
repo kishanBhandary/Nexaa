@@ -66,7 +66,7 @@ const LandingPage = ({ onNavigateToSignUp, onNavigateToSignIn }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black relative">
       <Navbar 
         onNavigateToSignUp={onNavigateToSignUp}
         onNavigateToSignIn={onNavigateToSignIn}
@@ -192,33 +192,38 @@ const LandingPage = ({ onNavigateToSignUp, onNavigateToSignIn }) => {
             <div className="inline-flex items-center gap-3 bg-gradient-to-r from-white/10 to-gray-500/10 backdrop-blur-sm px-5 py-3 rounded-full border border-white/20 shadow-2xl shadow-white/10">
               <Sparkles className="text-white" size={18} />
               <span className="bg-gradient-to-r from-white to-gray-300 text-black text-xs font-bold px-3 py-1.5 rounded-full">AI POWERED</span>
-              <span className="text-gray-100 text-sm font-medium">Next Generation Technology</span>
+              <span className="text-gray-100 text-sm font-medium">Compassionate Technology</span>
             </div>
 
-            <div className="space-y-6">
-              <h1 className="text-6xl md:text-8xl font-black text-white leading-[0.9] tracking-tight">
-                Revolutionize Your
+            <div className="space-y-8">
+              <h1 className="text-5xl md:text-7xl font-black text-white leading-[0.9] tracking-tight">
+                Your AI Companion for
                 <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-300 to-gray-500 animate-glow">
-                  Workflow with AI
+                  Mental Wellness
                 </span>
               </h1>
               
               <div className="w-20 h-1 bg-gradient-to-r from-white to-gray-500 rounded-full animate-float"></div>
+              
+              {/* Subtitle Section */}
+              <div className="space-y-4">
+                <h2 className="text-2xl md:text-3xl font-medium text-gray-200 tracking-wide">
+                  AI Powered Compassion
+                </h2>
+                <p className="text-lg text-gray-300 leading-relaxed max-w-lg font-light">
+                  Combining advanced artificial intelligence with genuine human empathy to gently support your emotional well-being.
+                </p>
+              </div>
             </div>
 
-            <p className="text-xl text-gray-300 leading-relaxed max-w-lg font-light">
-              Harness the power of artificial intelligence to transform your business processes, 
-              <span className="text-white font-medium"> automate complex workflows</span>, and unlock unprecedented efficiency in the digital age.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row gap-4 pt-6">
               <button 
                 onClick={onNavigateToSignUp}
                 className="group bg-gradient-to-r from-white via-gray-200 to-gray-300 text-black px-8 py-4 rounded-2xl font-semibold flex items-center justify-center gap-3 hover:shadow-2xl hover:shadow-white/30 transition-all duration-500 transform hover:scale-[1.02] border border-white/20"
               >
                 <Zap className="group-hover:rotate-12 transition-transform duration-300" size={22} />
-                Get Started Now
+                Start Your Journey
                 <ArrowRight className="group-hover:translate-x-1 transition-transform duration-300" size={22} />
               </button>
               
@@ -226,24 +231,24 @@ const LandingPage = ({ onNavigateToSignUp, onNavigateToSignIn }) => {
                 onClick={onNavigateToSignIn}
                 className="group bg-white/5 backdrop-blur-sm text-white px-8 py-4 rounded-2xl font-semibold border border-white/10 hover:border-white/30 hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-2"
               >
-                Watch Demo
+                Talk to Nexa
                 <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
               </button>
             </div>
 
-            {/* Stats */}
+            {/* Mental Health Stats */}
             <div className="grid grid-cols-3 gap-8 pt-8 border-t border-white/10">
               <div className="text-center">
-                <div className="text-3xl font-bold text-white">10M+</div>
-                <div className="text-sm text-gray-400">Active Users</div>
+                <div className="text-3xl font-bold text-white">24/7</div>
+                <div className="text-sm text-gray-400">Always Available</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-white">99.9%</div>
-                <div className="text-sm text-gray-400">Uptime</div>
+                <div className="text-3xl font-bold text-white">100K+</div>
+                <div className="text-sm text-gray-400">Lives Supported</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-white">500%</div>
-                <div className="text-sm text-gray-400">ROI Increase</div>
+                <div className="text-3xl font-bold text-white">95%</div>
+                <div className="text-sm text-gray-400">Feel Better</div>
               </div>
             </div>
           </div>
@@ -404,25 +409,6 @@ const LandingPage = ({ onNavigateToSignUp, onNavigateToSignIn }) => {
                 </div>
               </div>
             ))}
-          </div>
-
-          {/* Enhanced Contact Information */}
-          <div className="text-center mt-24 animate-fadeInUp" style={{ animationDelay: '0.4s' }}>
-            <div className="bg-gray-800/50 backdrop-blur-lg rounded-2xl p-10 border border-white/30 inline-block shadow-2xl hover:shadow-white/20 transition-all duration-500 hover:border-white/50 relative overflow-hidden group max-w-2xl">
-              {/* Background Effect */}
-              <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-gray-300/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              
-              <div className="relative z-10">
-                <div className="w-20 h-20 bg-gradient-to-r from-white to-gray-300 rounded-full mx-auto mb-6 shadow-2xl"></div>
-                <h3 className="text-3xl font-bold text-white mb-4 group-hover:text-gray-100 transition-colors">Get in Touch</h3>
-                <p className="text-xl text-gray-300 mb-6 leading-relaxed">Want to collaborate or have questions about our AI project?</p>
-                <div className="bg-white/10 backdrop-blur-sm rounded-full px-8 py-4 inline-block border border-white/20 hover:border-white/40 transition-all duration-300 hover:bg-white/20">
-                  <a href="mailto:dev@aiproject.com" className="text-xl text-white hover:text-gray-200 transition-colors font-semibold">
-                    dev@aiproject.com
-                  </a>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
