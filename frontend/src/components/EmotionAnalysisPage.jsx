@@ -10,12 +10,21 @@ const EmotionAnalysisPage = ({ user, authToken, onSignOut, onNavigateToChat }) =
   const [audioResponse, setAudioResponse] = useState(null);
   const [isPlayingResponse, setIsPlayingResponse] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Continuous emotion detection states
+  const [isContinuousMode, setIsContinuousMode] = useState(false);
+  const [continuousResults, setContinuousResults] = useState([]);
+  const [isCapturingContinuous, setIsCapturingContinuous] = useState(false);
 
   const mediaRecorderRef = useRef(null);
   const videoRef = useRef(null);
   const audioChunksRef = useRef([]);
   const streamRef = useRef(null);
   const audioElementRef = useRef(null);
+  
+  // Continuous mode refs
+  const continuousIntervalRef = useRef(null);
+  const continuousStreamRef = useRef(null);
 
   const API_BASE = 'http://localhost:8001';
 
@@ -24,6 +33,13 @@ const EmotionAnalysisPage = ({ user, authToken, onSignOut, onNavigateToChat }) =
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      // Clean up continuous mode
+      if (continuousIntervalRef.current) {
+        clearInterval(continuousIntervalRef.current);
+      }
+      if (continuousStreamRef.current) {
+        continuousStreamRef.current.getTracks().forEach(track => track.stop());
       }
     };
   }, []);
@@ -285,6 +301,124 @@ const EmotionAnalysisPage = ({ user, authToken, onSignOut, onNavigateToChat }) =
     }
   };
 
+  // Continuous Emotion Detection Functions
+  const startContinuousDetection = async () => {
+    if (isCapturingContinuous) return;
+    
+    try {
+      setIsCapturingContinuous(true);
+      setError(null);
+      setContinuousResults([]);
+      
+      // Get access to camera and microphone
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: true, 
+        audio: true 
+      });
+      
+      continuousStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+      
+      // Start continuous capture every 3 seconds
+      continuousIntervalRef.current = setInterval(async () => {
+        await captureContinuousEmotion();
+      }, 3000);
+      
+    } catch (err) {
+      console.error('Failed to start continuous detection:', err);
+      setError('Failed to access camera/microphone');
+      setIsCapturingContinuous(false);
+    }
+  };
+
+  const stopContinuousDetection = () => {
+    setIsCapturingContinuous(false);
+    
+    // Stop interval
+    if (continuousIntervalRef.current) {
+      clearInterval(continuousIntervalRef.current);
+      continuousIntervalRef.current = null;
+    }
+    
+    // Stop media stream
+    if (continuousStreamRef.current) {
+      continuousStreamRef.current.getTracks().forEach(track => track.stop());
+      continuousStreamRef.current = null;
+    }
+    
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  };
+
+  const captureContinuousEmotion = async () => {
+    if (!continuousStreamRef.current || !videoRef.current) return;
+    
+    try {
+      // Capture video frame
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.width = videoRef.current.videoWidth || 640;
+      canvas.height = videoRef.current.videoHeight || 480;
+      context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      
+      const imageBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+      
+      // Capture audio (2 seconds)
+      const audioRecorder = new MediaRecorder(continuousStreamRef.current);
+      const audioChunks = [];
+      
+      audioRecorder.ondataavailable = (event) => {
+        audioChunks.push(event.data);
+      };
+      
+      const audioBlob = await new Promise((resolve) => {
+        audioRecorder.onstop = () => {
+          resolve(new Blob(audioChunks, { type: 'audio/wav' }));
+        };
+        
+        audioRecorder.start();
+        setTimeout(() => {
+          audioRecorder.stop();
+        }, 2000);
+      });
+      
+      // Send to continuous analysis endpoint
+      const formData = new FormData();
+      formData.append('video_file', imageBlob, 'frame.jpg');
+      formData.append('audio_file', audioBlob, 'audio.wav');
+      formData.append('text', textInput || ''); // Include any text input
+      
+      const response = await fetch(`${API_BASE}/analyze/continuous`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: formData
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      // Add timestamp and update results
+      const timestampedResult = {
+        ...result,
+        timestamp: new Date().toLocaleTimeString()
+      };
+      
+      setContinuousResults(prev => [...prev.slice(-9), timestampedResult]); // Keep last 10 results
+      
+    } catch (err) {
+      console.error('Continuous capture error:', err);
+    }
+  };
+
   // Play audio response
   const playAudioResponse = () => {
     if (audioResponse && audioElementRef.current) {
@@ -338,6 +472,47 @@ const EmotionAnalysisPage = ({ user, authToken, onSignOut, onNavigateToChat }) =
             {user && (
               <p className="text-gray-400 text-sm mt-2">Welcome, {user.name || user.email}</p>
             )}
+            
+            {/* Mode Toggle */}
+            <div className="mt-4 flex items-center gap-4">
+              <label className="flex items-center gap-2 text-white">
+                <input
+                  type="checkbox"
+                  checked={isContinuousMode}
+                  onChange={(e) => {
+                    setIsContinuousMode(e.target.checked);
+                    if (!e.target.checked && isCapturingContinuous) {
+                      stopContinuousDetection();
+                    }
+                  }}
+                  className="rounded text-blue-600"
+                />
+                <span>Continuous Detection Mode</span>
+              </label>
+              
+              {isContinuousMode && (
+                <button
+                  onClick={isCapturingContinuous ? stopContinuousDetection : startContinuousDetection}
+                  className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                    isCapturingContinuous
+                      ? 'bg-red-600 hover:bg-red-700 text-white'
+                      : 'bg-green-600 hover:bg-green-700 text-white'
+                  }`}
+                >
+                  {isCapturingContinuous ? (
+                    <>
+                      <CameraOff size={20} />
+                      Stop Continuous
+                    </>
+                  ) : (
+                    <>
+                      <Camera size={20} />
+                      Start Continuous
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
           
           {/* Navigation */}
@@ -570,6 +745,83 @@ const EmotionAnalysisPage = ({ user, authToken, onSignOut, onNavigateToChat }) =
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Continuous Mode Results */}
+            {isContinuousMode && (
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
+                <h3 className="text-xl text-white font-semibold mb-4 flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded-full ${isCapturingContinuous ? 'bg-red-500 animate-pulse' : 'bg-gray-500'}`}></div>
+                  Continuous Emotion Stream
+                </h3>
+                
+                {isCapturingContinuous ? (
+                  <div className="space-y-3">
+                    <p className="text-gray-300 text-sm mb-4">
+                      Real-time emotion detection active • Capturing every 3 seconds
+                    </p>
+                    
+                    {continuousResults.length > 0 ? (
+                      <div className="max-h-96 overflow-y-auto space-y-3">
+                        {continuousResults.map((result, index) => (
+                          <div key={index} className="bg-white/5 rounded-lg p-4 border border-white/10">
+                            <div className="flex justify-between items-start mb-2">
+                              <span className="text-xs text-gray-400">{result.timestamp}</span>
+                              {result.overall_emotion && (
+                                <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getEmotionBg(result.overall_emotion.emotion)}`}>
+                                  {result.overall_emotion.emotion} • {(result.overall_emotion.confidence * 100).toFixed(0)}%
+                                </span>
+                              )}
+                            </div>
+                            
+                            <div className="grid grid-cols-3 gap-3 text-sm">
+                              {result.face_emotion && (
+                                <div>
+                                  <p className="text-gray-400 text-xs">Face</p>
+                                  <p className={`${getEmotionColor(result.face_emotion.emotion)} font-medium`}>
+                                    {result.face_emotion.emotion} ({(result.face_emotion.confidence * 100).toFixed(0)}%)
+                                  </p>
+                                </div>
+                              )}
+                              
+                              {result.voice_emotion && (
+                                <div>
+                                  <p className="text-gray-400 text-xs">Voice</p>
+                                  <p className={`${getEmotionColor(result.voice_emotion.emotion)} font-medium`}>
+                                    {result.voice_emotion.emotion} ({(result.voice_emotion.confidence * 100).toFixed(0)}%)
+                                  </p>
+                                </div>
+                              )}
+                              
+                              {result.text_emotion && (
+                                <div>
+                                  <p className="text-gray-400 text-xs">Text</p>
+                                  <p className={`${getEmotionColor(result.text_emotion.emotion)} font-medium`}>
+                                    {result.text_emotion.emotion} ({(result.text_emotion.confidence * 100).toFixed(0)}%)
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-400">
+                        <div className="animate-pulse">
+                          <div className="w-16 h-16 bg-gray-600 rounded-full mx-auto mb-4"></div>
+                          <p>Waiting for first emotion capture...</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-400">
+                    <Camera size={48} className="mx-auto mb-4 opacity-50" />
+                    <p>Click "Start Continuous" to begin real-time emotion detection</p>
+                    <p className="text-sm mt-2">This will analyze your face, voice, and text continuously</p>
+                  </div>
+                )}
               </div>
             )}
 

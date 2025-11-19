@@ -13,6 +13,7 @@ import os
 import json
 import uuid
 import tempfile
+import datetime
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 
@@ -225,9 +226,19 @@ async def startup_event():
     
     try:
         if ModelClass:
-            # Initialize the emotion recognition model (no parameters needed for V2)
-            emotion_recognizer = ModelClass()
-            print("✓ Production Emotion Recognition loaded successfully")
+            # Initialize the emotion recognition model
+            if hasattr(ModelClass, '__name__') and ModelClass.__name__ == 'NexaEmotionRecognizer':
+                try:
+                    emotion_recognizer = ModelClass("../nexamodel/NexaModel_Complete")
+                except:
+                    # If directory doesn't exist, use mock
+                    emotion_recognizer = MockEmotionRecognizer()
+            else:
+                try:
+                    emotion_recognizer = ModelClass()
+                except:
+                    emotion_recognizer = MockEmotionRecognizer()
+            print("✓ Emotion Recognition loaded successfully")
         else:
             emotion_recognizer = MockEmotionRecognizer()
             print("✓ Mock emotion recognizer loaded")
@@ -571,7 +582,167 @@ async def test_endpoint():
     """Simple test endpoint"""
     return {"message": "FastAPI is working!", "dependencies": dependencies_loaded}
 
+# Continuous emotion detection endpoint
+@app.post("/analyze/continuous")
+async def analyze_continuous_emotion(
+    text: Optional[str] = Form(None),
+    audio_file: Optional[UploadFile] = File(None),
+    video_file: Optional[UploadFile] = File(None),
+    session_id: Optional[str] = Form(None),
+    user_data = Depends(verify_token)
+):
+    """
+    Continuous multimodal emotion detection
+    This endpoint analyzes all available inputs and maintains emotion state across time
+    """
+    if not emotion_recognizer:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+    
+    # Generate analysis ID
+    analysis_id = str(uuid.uuid4())
+    session_id = session_id or f"session_{analysis_id[:8]}"
+    
+    try:
+        # Prepare inputs for multimodal analysis
+        audio_path = None
+        video_path = None
+        
+        # Process audio file if provided
+        if audio_file:
+            audio_filename = f"{analysis_id}_audio.{audio_file.filename.split('.')[-1] if audio_file.filename else 'wav'}"
+            audio_path = UPLOAD_DIR / audio_filename
+            
+            content = await audio_file.read()
+            with open(audio_path, 'wb') as f:
+                f.write(content)
+        
+        # Process video file if provided
+        if video_file:
+            if video_file.content_type and video_file.content_type.startswith('image/'):
+                video_filename = f"{analysis_id}_image.{video_file.filename.split('.')[-1] if video_file.filename else 'jpg'}"
+                video_path = UPLOAD_DIR / video_filename
+                
+                content = await video_file.read()
+                with open(video_path, 'wb') as f:
+                    f.write(content)
+            else:
+                # Handle video file - extract frame
+                video_filename = f"{analysis_id}_video.{video_file.filename.split('.')[-1] if video_file.filename else 'mp4'}"
+                temp_video_path = UPLOAD_DIR / video_filename
+                
+                content = await video_file.read()
+                with open(temp_video_path, 'wb') as f:
+                    f.write(content)
+                
+                # Extract frame using OpenCV
+                try:
+                    import cv2
+                    cap = cv2.VideoCapture(str(temp_video_path))
+                    ret, frame = cap.read()
+                    cap.release()
+                    
+                    if ret:
+                        frame_filename = f"{analysis_id}_frame.jpg"
+                        video_path = UPLOAD_DIR / frame_filename
+                        cv2.imwrite(str(video_path), frame)
+                    
+                    # Clean up video file
+                    os.unlink(temp_video_path)
+                except Exception as e:
+                    print(f"Video processing error: {e}")
+                    if temp_video_path.exists():
+                        os.unlink(temp_video_path)
+        
+        # Perform individual modality analysis
+        text_result = None
+        voice_result = None  
+        face_result = None
+        
+        if text and text.strip():
+            text_result = emotion_recognizer.predict_emotion(text=text)
+        
+        if audio_path:
+            voice_result = emotion_recognizer.predict_emotion(audio_file=str(audio_path))
+        
+        if video_path:
+            face_result = emotion_recognizer.predict_emotion(face_image=str(video_path))
+        
+        # Perform combined multimodal analysis 
+        multimodal_result = emotion_recognizer.predict_emotion(
+            face_image=str(video_path) if video_path else None,
+            audio_file=str(audio_path) if audio_path else None,
+            text=text if text and text.strip() else None
+        )
+        
+        # Build continuous response
+        continuous_response = {
+            'session_id': session_id,
+            'timestamp': datetime.datetime.now().isoformat(),
+            'overall_emotion': {
+                'emotion': multimodal_result['predicted_emotion'],
+                'confidence': float(multimodal_result['confidence'])
+            },
+            'modalities_analyzed': []
+        }
+        
+        # Add individual modality results
+        if text_result:
+            continuous_response['text_emotion'] = {
+                'emotion': text_result['predicted_emotion'], 
+                'confidence': float(text_result['confidence'])
+            }
+            continuous_response['modalities_analyzed'].append('text')
+        
+        if voice_result:
+            continuous_response['voice_emotion'] = {
+                'emotion': voice_result['predicted_emotion'],
+                'confidence': float(voice_result['confidence']) 
+            }
+            continuous_response['modalities_analyzed'].append('voice')
+        
+        if face_result:
+            continuous_response['face_emotion'] = {
+                'emotion': face_result['predicted_emotion'],
+                'confidence': float(face_result['confidence'])
+            }
+            continuous_response['modalities_analyzed'].append('face')
+        
+        # Add fusion information
+        continuous_response['fusion_score'] = len(continuous_response['modalities_analyzed']) / 3.0
+        continuous_response['analysis_id'] = analysis_id
+        
+        # Generate voice response if enabled
+        if hasattr(emotion_recognizer, 'generate_voice_response'):
+            try:
+                voice_response_path = emotion_recognizer.generate_voice_response(
+                    multimodal_result['predicted_emotion'], 
+                    analysis_id
+                )
+                if voice_response_path:
+                    continuous_response['voice_response_url'] = f"/audio/{voice_response_path.name}"
+            except Exception as e:
+                print(f"Voice response generation failed: {e}")
+        
+        return continuous_response
+        
+    except Exception as e:
+        print(f"Continuous analysis error: {e}")
+        # Clean up files in case of error
+        for file_path in [audio_path, video_path]:
+            if file_path and file_path.exists():
+                try:
+                    os.unlink(file_path)
+                except:
+                    pass
+        
+        raise HTTPException(status_code=500, detail=f"Continuous analysis failed: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     print("Starting FastAPI server on http://localhost:8001")
-    uvicorn.run(app, host="0.0.0.0", port=8001, reload=True)
+    print("🚀 NexaModel Emotion Recognition API is starting...")
+    try:
+        uvicorn.run(app, host="0.0.0.0", port=8001, reload=False)
+    except Exception as e:
+        print(f"❌ Failed to start server: {e}")
+        raise

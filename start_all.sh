@@ -144,7 +144,14 @@ start_services() {
     print_status "Starting FastAPI ML Service..."
     cd ml-service
     source venv/bin/activate
-    nohup python main.py > ../logs/ml-service.log 2>&1 &
+    
+    # Install ML dependencies if not present
+    pip install -q tf-keras gtts aiofiles transformers torch opencv-python librosa
+    
+    # Kill any existing ML service
+    pkill -f "simple_main.py" 2>/dev/null || true
+    
+    nohup python simple_main.py > ../logs/ml-service.log 2>&1 &
     ML_PID=$!
     echo $ML_PID > ../logs/ml-service.pid
     deactivate
