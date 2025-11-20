@@ -12,6 +12,8 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   overflow-x: hidden; /* Hide horizontal scrollbar only */
   overflow-y: auto; /* Allow vertical scrolling */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Hide scrollbars completely */
@@ -22,4 +24,155 @@ body {
 * {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
+}
+
+/* Mobile-specific optimizations */
+@media (max-width: 768px) {
+  html {
+    /* Prevent zoom on input focus in iOS */
+    -webkit-text-size-adjust: 100%;
+  }
+  
+  body {
+    /* Prevent body scroll when modal is open */
+    position: relative;
+  }
+  
+  /* Safe area support for notched devices */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Touch-friendly button styles */
+.touch-button {
+  min-height: 44px; /* iOS Human Interface Guidelines minimum */
+  min-width: 44px;
+  touch-action: manipulation; /* Disable double-tap zoom */
+}
+
+/* Improve touch scrolling */
+.smooth-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Mobile text input improvements */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea {
+  font-size: 16px; /* Prevents zoom on focus in iOS */
+  -webkit-appearance: none;
+  border-radius: 0; /* Reset iOS rounded corners */
+}
+
+/* Disable iOS zoom */
+@media screen and (max-width: 767px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  textarea,
+  select {
+    font-size: 16px !important;
+    transform-origin: left top;
+  }
+}
+
+/* Mobile-first responsive text sizing */
+.responsive-text-xs {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1rem; /* 16px */
+}
+
+@media (min-width: 640px) {
+  .responsive-text-xs {
+    font-size: 0.875rem; /* 14px */
+    line-height: 1.25rem; /* 20px */
+  }
+}
+
+.responsive-text-sm {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.25rem; /* 20px */
+}
+
+@media (min-width: 640px) {
+  .responsive-text-sm {
+    font-size: 1rem; /* 16px */
+    line-height: 1.5rem; /* 24px */
+  }
+}
+
+.responsive-text-base {
+  font-size: 1rem; /* 16px */
+  line-height: 1.5rem; /* 24px */
+}
+
+@media (min-width: 640px) {
+  .responsive-text-base {
+    font-size: 1.125rem; /* 18px */
+    line-height: 1.75rem; /* 28px */
+  }
+}
+
+/* Mobile viewport fixes */
+.mobile-full-height {
+  height: 100vh;
+  height: 100dvh; /* Use dynamic viewport height when available */
+}
+
+/* Animation optimizations for mobile */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Mobile-friendly modal backdrop */
+.mobile-modal-backdrop {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Touch-friendly spacing */
+.touch-spacing {
+  margin: 0.5rem; /* 8px minimum touch target spacing */
+}
+
+/* Optimized gradients for mobile performance */
+@media (max-width: 768px) {
+  .performance-gradient {
+    background: linear-gradient(180deg, #000000 0%, #111827 50%, #000000 100%);
+  }
+}
+
+/* Mobile-specific z-index management */
+.mobile-nav-z {
+  z-index: 1000;
+}
+
+.mobile-modal-z {
+  z-index: 1050;
+}
+
+.mobile-tooltip-z {
+  z-index: 1100;
 }

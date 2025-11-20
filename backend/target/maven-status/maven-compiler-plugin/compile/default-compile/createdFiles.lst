@@ -9,8 +9,8 @@ com/nexaa/util/UserPrincipal.class
 com/nexaa/dto/AuthResponse.class
 com/nexaa/security/WebSecurityConfig.class
 com/nexaa/NexaaBackendApplication.class
-com/nexaa/service/UserDetailsServiceImpl.class
 com/nexaa/security/AuthTokenFilter.class
+com/nexaa/service/UserDetailsServiceImpl.class
 com/nexaa/dto/MessageResponse.class
 com/nexaa/model/Role.class
 com/nexaa/controller/AuthController.class

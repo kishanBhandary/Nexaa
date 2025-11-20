@@ -448,125 +448,127 @@ const ChatPage = () => {
   };
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-gray-950 to-black text-white overflow-hidden">
+    <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-gray-950 to-black text-white overflow-hidden mobile-full-height">
       {/* Background Effects */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-950/10 via-purple-950/5 to-slate-950/20 animate-pulse"></div>
       
-      {/* Header */}
-      <header className="relative z-10 p-4 sm:p-6 border-b border-white/10 backdrop-blur-xl bg-white/5">
+      {/* Header - Mobile Optimized */}
+      <header className="relative mobile-nav-z p-3 sm:p-4 lg:p-6 border-b border-white/10 backdrop-blur-xl bg-white/5 safe-area-top">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-4 sm:space-x-6">
-            <div className="relative">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-white/90 via-blue-100/80 to-white/70 text-gray-800 flex items-center justify-center text-lg sm:text-xl font-bold shadow-lg">
+          <div className="flex items-center space-x-3 sm:space-x-4 lg:space-x-6 min-w-0 flex-1">
+            <div className="relative flex-shrink-0">
+              <div className="w-10 sm:w-12 lg:w-14 h-10 sm:h-12 lg:h-14 rounded-xl sm:rounded-2xl bg-gradient-to-br from-white/90 via-blue-100/80 to-white/70 text-gray-800 flex items-center justify-center text-base sm:text-lg lg:text-xl font-bold shadow-lg">
                 {user?.email?.charAt(0).toUpperCase() || 'U'}
               </div>
             </div>
             
-            <div className="space-y-1">
-              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-white via-blue-100 to-white bg-clip-text text-transparent">
+            <div className="space-y-1 min-w-0 flex-1">
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold bg-gradient-to-r from-white via-blue-100 to-white bg-clip-text text-transparent">
                 Nexa
               </h1>
-              <p className="text-sm sm:text-base text-gray-300 flex items-center">
-                {isAnalyzingEmotion ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="flex space-x-1">
-                      {[0, 1, 2].map(dot => (
-                        <div 
-                          key={dot}
-                          className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-pulse"
-                          style={{ animationDelay: `${dot * 0.2}s` }}
-                        />
-                      ))}
+              <div className="min-h-[1.25rem] sm:min-h-[1.5rem]">
+                <p className="text-xs sm:text-sm lg:text-base text-gray-300 flex items-center truncate">
+                  {isAnalyzingEmotion ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="flex space-x-1">
+                        {[0, 1, 2].map(dot => (
+                          <div 
+                            key={dot}
+                            className="w-1 sm:w-1.5 h-1 sm:h-1.5 bg-purple-400 rounded-full animate-pulse"
+                            style={{ animationDelay: `${dot * 0.2}s` }}
+                          />
+                        ))}
+                      </div>
+                      <span className="font-medium text-purple-300 text-xs sm:text-sm">Understanding emotions...</span>
                     </div>
-                    <span className="font-medium text-purple-300">Understanding your emotions...</span>
-                  </div>
-                ) : isAiSpeaking ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="flex space-x-1">
-                      {[0, 1, 2].map(dot => (
-                        <div 
-                          key={dot}
-                          className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"
-                          style={{ animationDelay: `${dot * 0.2}s` }}
-                        />
-                      ))}
+                  ) : isAiSpeaking ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="flex space-x-1">
+                        {[0, 1, 2].map(dot => (
+                          <div 
+                            key={dot}
+                            className="w-1 sm:w-1.5 h-1 sm:h-1.5 bg-emerald-400 rounded-full animate-pulse"
+                            style={{ animationDelay: `${dot * 0.2}s` }}
+                          />
+                        ))}
+                      </div>
+                      <span className="font-medium text-xs sm:text-sm truncate">
+                        {lastDetectedEmotion ? 
+                          `Nexa responding (${lastDetectedEmotion.emotion} ${lastDetectedEmotion.emoji})...` : 
+                          'Nexa is speaking...'
+                        }
+                      </span>
                     </div>
-                    <span className="font-medium">
-                      {lastDetectedEmotion ? 
-                        `Nexa responding with empathy (detected: ${lastDetectedEmotion.emotion} ${lastDetectedEmotion.emoji})...` : 
-                        'Nexa is speaking...'
-                      }
-                    </span>
-                  </div>
-                ) : isListening ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-ping"></div>
-                    <span className="font-medium text-blue-300">Listening...</span>
-                  </div>
-                ) : lastDetectedEmotion ? (
-                  <div className="flex items-center space-x-2">
-                    <span className="text-lg">{lastDetectedEmotion.emoji}</span>
-                    <span className="text-gray-400">
-                      Last emotion: {lastDetectedEmotion.emotion} • NexaModel V2 (82% accuracy)
-                    </span>
-                  </div>
-                ) : (
-                  <span className="text-gray-400">NexaModel V2 - High-Accuracy Emotion AI Ready</span>
-                )}
-              </p>
+                  ) : isListening ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-blue-400 rounded-full animate-ping"></div>
+                      <span className="font-medium text-blue-300 text-xs sm:text-sm">Listening...</span>
+                    </div>
+                  ) : lastDetectedEmotion ? (
+                    <div className="flex items-center space-x-2">
+                      <span className="text-base sm:text-lg">{lastDetectedEmotion.emoji}</span>
+                      <span className="text-gray-400 text-xs sm:text-sm truncate">
+                        Last emotion: {lastDetectedEmotion.emotion} • NexaModel V2 (82% accuracy)
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 text-xs sm:text-sm">NexaModel V2 - High-Accuracy Emotion AI Ready</span>
+                  )}
+                </p>
+              </div>
             </div>
           </div>
           
-          {/* Action Buttons */}
-          <div className="flex items-center space-x-3">
+          {/* Action Buttons - Mobile Optimized */}
+          <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
             {isAiSpeaking && (
               <button 
                 onClick={stopSpeaking}
-                className="group p-2.5 sm:p-3 rounded-xl bg-red-500/20 hover:bg-red-500/30 transition-all duration-300 text-red-400 hover:text-red-300 backdrop-blur-sm border border-red-500/30 hover:scale-105"
+                className="touch-button group p-2 sm:p-2.5 lg:p-3 rounded-xl bg-red-500/20 hover:bg-red-500/30 transition-all duration-300 text-red-400 hover:text-red-300 backdrop-blur-sm border border-red-500/30 hover:scale-105"
               >
-                <Square className="w-5 h-5 sm:w-6 sm:h-6 group-hover:animate-pulse" />
+                <Square className="w-4 sm:w-5 lg:w-6 h-4 sm:h-5 lg:h-6 group-hover:animate-pulse" />
               </button>
             )}
-            <button className="group p-2.5 sm:p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-300 backdrop-blur-sm border border-white/20 hover:scale-105">
-              <Settings className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-90 transition-transform duration-300" />
+            <button className="touch-button group p-2 sm:p-2.5 lg:p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-300 backdrop-blur-sm border border-white/20 hover:scale-105">
+              <Settings className="w-4 sm:w-5 lg:w-6 h-4 sm:h-5 lg:h-6 group-hover:rotate-90 transition-transform duration-300" />
             </button>
             <button 
               onClick={handleSignOut}
-              className="group p-2.5 sm:p-3 rounded-xl bg-white/10 hover:bg-red-500/20 transition-all duration-300 text-gray-300 hover:text-red-300 backdrop-blur-sm border border-white/20 hover:border-red-500/30 hover:scale-105"
+              className="touch-button group p-2 sm:p-2.5 lg:p-3 rounded-xl bg-white/10 hover:bg-red-500/20 transition-all duration-300 text-gray-300 hover:text-red-300 backdrop-blur-sm border border-white/20 hover:border-red-500/30 hover:scale-105"
             >
-              <LogOut className="w-5 h-5 sm:w-6 sm:h-6 group-hover:translate-x-1 transition-transform duration-300" />
+              <LogOut className="w-4 sm:w-5 lg:w-6 h-4 sm:h-5 lg:h-6 group-hover:translate-x-1 transition-transform duration-300" />
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="relative z-10 flex flex-col h-[calc(100vh-96px)]">
+      {/* Main Content - Mobile Optimized */}
+      <div className="relative mobile-modal-z flex flex-col h-[calc(100vh-80px)] sm:h-[calc(100vh-96px)]">
         {/* Messages Area */}
         <div className="flex-1 relative overflow-hidden">
           {messages.filter(message => message.sender === 'user').length === 0 ? (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center space-y-8 max-w-md mx-auto p-6">
-                <div className="relative mx-auto w-32 h-32">
-                  <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-white/20 via-blue-500/10 to-emerald-500/10 flex items-center justify-center backdrop-blur-xl border border-white/20 shadow-2xl">
-                    <Mic className="w-16 h-16 text-white/70" />
+            <div className="absolute inset-0 flex items-center justify-center p-4">
+              <div className="text-center space-y-6 sm:space-y-8 max-w-md mx-auto">
+                <div className="relative mx-auto w-24 sm:w-32 h-24 sm:h-32">
+                  <div className="w-24 sm:w-32 h-24 sm:h-32 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-white/20 via-blue-500/10 to-emerald-500/10 flex items-center justify-center backdrop-blur-xl border border-white/20 shadow-2xl">
+                    <Mic className="w-12 sm:w-16 h-12 sm:h-16 text-white/70" />
                   </div>
                 </div>
                 
-                <div className="space-y-4">
-                  <h3 className="text-2xl sm:text-3xl font-light text-white/90 leading-tight">
+                <div className="space-y-3 sm:space-y-4">
+                  <h3 className="text-xl sm:text-2xl lg:text-3xl font-light text-white/90 leading-tight">
                     <span className="bg-gradient-to-r from-white via-blue-100 to-white bg-clip-text text-transparent">
                       I'm analyzing how you feel
                     </span>
                   </h3>
-                  <p className="text-base sm:text-lg text-gray-300 leading-relaxed max-w-sm mx-auto">
+                  <p className="text-sm sm:text-base lg:text-lg text-gray-300 leading-relaxed max-w-xs sm:max-w-sm mx-auto">
                     Share your thoughts with me, and I'll understand your emotions to help you feel better
                   </p>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="absolute inset-0 p-4 sm:p-6 space-y-6 max-w-5xl mx-auto w-full overflow-y-auto">
+            <div className="absolute inset-0 p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 max-w-5xl mx-auto w-full overflow-y-auto smooth-scroll">
               {messages.filter(message => message.sender === 'user').map((message) => (
                 <div key={message.id} className="animate-fadeIn">
                   <MessageBubble message={message} isUser={true} />
@@ -576,16 +578,16 @@ const ChatPage = () => {
               {/* Emotion Analysis Indicator */}
               {isAiSpeaking && (
                 <div className="flex justify-start animate-slideInLeft">
-                  <div className="max-w-sm sm:max-w-md lg:max-w-lg bg-gradient-to-br from-emerald-500/10 via-white/5 to-emerald-500/5 backdrop-blur-xl border border-emerald-400/30 rounded-3xl p-6">
-                    <div className="flex items-center space-x-4 mb-3">
-                      <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-black font-bold shadow-lg">
+                  <div className="max-w-[85%] sm:max-w-sm lg:max-w-md bg-gradient-to-br from-emerald-500/10 via-white/5 to-emerald-500/5 backdrop-blur-xl border border-emerald-400/30 rounded-2xl sm:rounded-3xl p-4 sm:p-6">
+                    <div className="flex items-center space-x-3 sm:space-x-4 mb-2 sm:mb-3">
+                      <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-black font-bold shadow-lg text-sm sm:text-base">
                         AI
                       </div>
                       <div className="flex-1">
-                        <span className="text-emerald-300 font-medium">Speaking with empathy...</span>
+                        <span className="text-emerald-300 font-medium text-sm sm:text-base">Speaking with empathy...</span>
                       </div>
                     </div>
-                    <div className="h-20 relative">
+                    <div className="h-16 sm:h-20 relative">
                       <VoiceWaveform isActive={true} type="speaking" isInline={true} />
                     </div>
                   </div>
@@ -595,51 +597,51 @@ const ChatPage = () => {
           )}
         </div>
 
-        {/* Voice Waveform Animation (Welcome) */}
+        {/* Voice Waveform Animation (Welcome) - Mobile Optimized */}
         {isAiSpeaking && !hasAnalyzedInitialEmotion && (
           <VoiceWaveform isActive={true} type="speaking" isInline={false} />
         )}
 
-        {/* Input Area */}
-        <div className="relative z-20 p-4 sm:p-6 border-t border-white/10 backdrop-blur-xl bg-gradient-to-t from-black/20 to-transparent">
+        {/* Input Area - Mobile Optimized */}
+        <div className="relative mobile-modal-z p-3 sm:p-4 lg:p-6 border-t border-white/10 backdrop-blur-xl bg-gradient-to-t from-black/20 to-transparent safe-area-bottom">
           <div className="max-w-5xl mx-auto">
-            <div className="flex items-end space-x-3 sm:space-x-4">
-              {/* Voice Button */}
+            <div className="flex items-end space-x-2 sm:space-x-3 lg:space-x-4">
+              {/* Voice Button - Mobile Optimized */}
               <button
                 onClick={toggleVoiceRecording}
-                className={`group relative p-3 sm:p-3.5 rounded-2xl transition-all duration-300 flex-shrink-0 ${
+                className={`touch-button group relative p-3 lg:p-3.5 rounded-xl sm:rounded-2xl transition-all duration-300 flex-shrink-0 ${
                   isListening 
                     ? 'bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/30 scale-110' 
                     : 'bg-gradient-to-br from-white/80 to-white/60 text-gray-800 hover:from-white/90 hover:to-white/70 shadow-lg hover:shadow-xl hover:scale-105'
                 }`}
               >
                 {isListening ? (
-                  <MicOff className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
+                  <MicOff className="w-5 sm:w-6 lg:w-7 h-5 sm:h-6 lg:h-7 text-white" />
                 ) : (
-                  <Mic className="w-6 h-6 sm:w-7 sm:h-7" />
+                  <Mic className="w-5 sm:w-6 lg:w-7 h-5 sm:h-6 lg:h-7" />
                 )}
                 {isListening && (
-                  <div className="absolute inset-0 rounded-2xl border-2 border-red-300/50 animate-ping"></div>
+                  <div className="absolute inset-0 rounded-xl sm:rounded-2xl border-2 border-red-300/50 animate-ping"></div>
                 )}
               </button>
 
-              {/* Text Input */}
+              {/* Text Input - Mobile Optimized */}
               <div className="flex-1 relative">
                 <textarea
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Share your thoughts and feelings..."
-                  className="w-full p-4 sm:p-5 pr-12 sm:pr-14 rounded-2xl bg-gradient-to-br from-slate-800/90 via-gray-800/85 to-slate-900/90 backdrop-blur-xl border border-white/30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400/60 focus:border-blue-400/60 focus:bg-slate-800/95 resize-none min-h-[56px] sm:min-h-[64px] max-h-40 text-base sm:text-lg font-medium transition-all duration-300 shadow-2xl"
+                  className="w-full p-3 sm:p-4 lg:p-5 pr-10 sm:pr-12 lg:pr-14 rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-800/90 via-gray-800/85 to-slate-900/90 backdrop-blur-xl border border-white/30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400/60 focus:border-blue-400/60 focus:bg-slate-800/95 resize-none min-h-[48px] sm:min-h-[56px] lg:min-h-[64px] max-h-32 sm:max-h-40 text-sm sm:text-base lg:text-lg font-medium transition-all duration-300 shadow-2xl"
                   rows="1"
                 />
                 
                 <button
                   onClick={handleSendMessage}
                   disabled={!inputText.trim()}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2.5 sm:p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:from-blue-500/90 hover:to-blue-600/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-105"
+                  className="touch-button absolute right-2 top-1/2 transform -translate-y-1/2 p-2 sm:p-2.5 lg:p-3 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:from-blue-500/90 hover:to-blue-600/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-blue-500/25 hover:scale-105"
                 >
-                  <Send className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <Send className="w-3.5 sm:w-4 lg:w-5 h-3.5 sm:h-4 lg:h-5" />
                 </button>
               </div>
             </div>
