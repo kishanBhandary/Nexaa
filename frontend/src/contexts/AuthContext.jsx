@@ -17,7 +17,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(null);
 
-  const API_BASE_URL = 'http://localhost:8080';
+  const API_BASE_URL = 'http://localhost:8080/api';
 
   useEffect(() => {
     // Check for GitHub OAuth callback
@@ -106,10 +106,10 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       
       let userWithId;
-      let authToken = 'demo-token-' + Date.now(); // For demo purposes
+      let authToken;
       
       if (userData.type === 'google') {
-        // Handle Google OAuth login
+        // Handle Google OAuth login - for now, keep demo behavior
         const { userInfo } = userData;
         userWithId = {
           id: userInfo.sub,
@@ -122,8 +122,9 @@ export const AuthProvider = ({ children }) => {
           lastActive: new Date().toISOString(),
           authType: 'google'
         };
+        authToken = 'demo-token-' + Date.now(); // For demo purposes
       } else if (userData.type === 'github') {
-        // Handle GitHub OAuth login
+        // Handle GitHub OAuth login - for now, keep demo behavior
         const { userInfo } = userData;
         userWithId = {
           id: userInfo.id,
@@ -136,13 +137,41 @@ export const AuthProvider = ({ children }) => {
           lastActive: new Date().toISOString(),
           authType: 'github'
         };
+        authToken = 'demo-token-' + Date.now(); // For demo purposes
       } else {
-        // Handle regular email login
+        // Handle regular email/password login - CALL BACKEND
+        console.log('Sending signin request to backend with email:', userData.email);
+        
+        const response = await fetch(`${API_BASE_URL}/auth/signin`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: userData.email,
+            password: userData.password
+          }),
+        });
+
+        console.log('Backend signin response status:', response.status);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Backend signin error:', errorData);
+          throw new Error(errorData.message || 'Invalid credentials');
+        }
+
+        const authData = await response.json();
+        console.log('Successful signin response:', authData);
+        authToken = authData.token;
+        
         userWithId = {
-          ...userData,
-          id: Date.now(),
-          name: userData.email.split('@')[0],
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.email)}&background=06b6d4&color=fff`,
+          id: authData.id,
+          email: authData.email,
+          username: authData.username,
+          name: authData.username, // Use username as display name
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(authData.username)}&background=06b6d4&color=fff`,
+          roles: authData.roles,
           joinedDate: new Date().toISOString(),
           lastActive: new Date().toISOString(),
           authType: 'email'
@@ -168,10 +197,10 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       
       let userWithId;
-      let authToken = 'demo-token-' + Date.now(); // For demo purposes
+      let authToken;
       
       if (userData.type === 'google') {
-        // Handle Google OAuth signup
+        // Handle Google OAuth signup - for now, keep demo behavior
         const { userInfo } = userData;
         userWithId = {
           id: userInfo.sub,
@@ -184,8 +213,9 @@ export const AuthProvider = ({ children }) => {
           lastActive: new Date().toISOString(),
           authType: 'google'
         };
+        authToken = 'demo-token-' + Date.now(); // For demo purposes
       } else if (userData.type === 'github') {
-        // Handle GitHub OAuth signup
+        // Handle GitHub OAuth signup - for now, keep demo behavior
         const { userInfo } = userData;
         userWithId = {
           id: userInfo.id,
@@ -198,13 +228,46 @@ export const AuthProvider = ({ children }) => {
           lastActive: new Date().toISOString(),
           authType: 'github'
         };
+        authToken = 'demo-token-' + Date.now(); // For demo purposes
       } else {
-        // Handle regular email signup
+        // Handle regular email/password signup - CALL BACKEND
+        console.log('Sending signup request to backend with data:', {
+          email: userData.email,
+          username: userData.username,
+          // Don't log password for security
+        });
+        
+        const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: userData.email,
+            password: userData.password,
+            username: userData.username
+          }),
+        });
+
+        console.log('Backend response status:', response.status);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Backend error response:', errorData);
+          throw new Error(errorData.message || 'Failed to create account');
+        }
+
+        const authData = await response.json();
+        console.log('Successful signup response:', authData);
+        authToken = authData.token;
+        
         userWithId = {
-          ...userData,
-          id: Date.now(),
-          name: userData.username,
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.username)}&background=8b5cf6&color=fff`,
+          id: authData.id,
+          email: authData.email,
+          username: authData.username,
+          name: authData.username, // Use username as display name
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(authData.username)}&background=8b5cf6&color=fff`,
+          roles: authData.roles,
           joinedDate: new Date().toISOString(),
           lastActive: new Date().toISOString(),
           authType: 'email'

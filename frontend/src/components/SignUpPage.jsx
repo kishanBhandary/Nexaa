@@ -90,15 +90,30 @@ const SignUpPage = ({ onClose, onNavigateToSignIn, onSignUp }) => {
       alert('Passwords do not match!');
       return;
     }
-    if (passwordStrength < 3) {
+    if (passwordStrength < 2) {
       alert('Please choose a stronger password!');
       return;
     }
+    
     setIsLoading(true);
-    await onSignUp({
-      type: 'email',
-      ...formData
-    });
+    try {
+      const result = await onSignUp({
+        type: 'email',
+        ...formData
+      });
+      
+      // Check if result exists and handle accordingly
+      if (result && !result.success) {
+        alert(result.error || 'Signup failed. Please try again.');
+      } else if (!result) {
+        // If no result returned, assume success for now
+        console.log('Signup completed - no result object returned');
+      }
+      // If successful, the onSignUp function should handle navigation
+    } catch (error) {
+      alert('Signup failed. Please try again.');
+      console.error('Signup error:', error);
+    }
     setIsLoading(false);
   };
 

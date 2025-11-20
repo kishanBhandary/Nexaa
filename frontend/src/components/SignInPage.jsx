@@ -75,7 +75,17 @@ const SignInPage = ({ onClose, onNavigateToSignUp, onSignIn }) => {
       setIsLoading(false);
       return;
     }
-    await onSignIn(formData);
+    
+    try {
+      const result = await onSignIn(formData);
+      if (!result.success) {
+        alert(result.error || 'Login failed. Please check your credentials.');
+      }
+    } catch (error) {
+      alert('Login failed. Please check your credentials.');
+      console.error('Login error:', error);
+    }
+    
     setIsLoading(false);
   };
 
