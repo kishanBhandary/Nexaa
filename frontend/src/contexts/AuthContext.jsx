@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-
-// Backend API configuration
-const API_BASE_URL = 'http://localhost:8080/api';
+import { signOutGoogle } from '../services/googleAuth';
+import { isGitHubCallback, getGitHubCallbackParams, handleGitHubCallback } from '../services/githubAuth';
 
 const AuthContext = createContext();
 
@@ -16,8 +15,50 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState(null);
+
+  const API_BASE_URL = 'http://localhost:8080/api';
 
   useEffect(() => {
+    // Check for GitHub OAuth callback
+    if (isGitHubCallback()) {
+      const params = getGitHubCallbackParams();
+      
+      if (params.error) {
+        console.error('GitHub OAuth error:', params.error, params.error_description);
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (params.code && params.state) {
+        // Handle successful GitHub callback
+        handleGitHubCallback(params.code, params.state)
+          .then(result => {
+            // Process the GitHub user data
+            const userWithId = {
+              id: result.userInfo.id,
+              email: result.userInfo.email,
+              username: result.userInfo.login,
+              name: result.userInfo.name,
+              avatar: result.userInfo.avatar_url,
+              githubId: result.userInfo.id,
+              joinedDate: new Date().toISOString(),
+              lastActive: new Date().toISOString(),
+              authType: 'github'
+            };
+            
+            setUser(userWithId);
+            localStorage.setItem('user', JSON.stringify(userWithId));
+            
+            // Clean up URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+          })
+          .catch(error => {
+            console.error('GitHub callback error:', error);
+            // Clean up URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+          });
+      }
+    }
+    
     // Check if user is logged in (from localStorage)
     const savedUser = localStorage.getItem('user');
     const savedToken = localStorage.getItem('token');
@@ -26,6 +67,7 @@ export const AuthProvider = ({ children }) => {
       try {
         const parsedUser = JSON.parse(savedUser);
         setUser(parsedUser);
+        setToken(savedToken);
         
         // Validate token with backend
         validateToken(savedToken).catch(() => {
@@ -33,6 +75,7 @@ export const AuthProvider = ({ children }) => {
           localStorage.removeItem('user');
           localStorage.removeItem('token');
           setUser(null);
+          setToken(null);
         });
       } catch (error) {
         localStorage.removeItem('user');
@@ -62,34 +105,83 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       
-      const response = await fetch(`${API_BASE_URL}/auth/signin`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to sign in');
-      }
-
-      // Backend returns: { token, type, id, username, email, roles, expiresAt }
-      const userInfo = {
-        id: data.id,
-        username: data.username,
-        email: data.email,
-        roles: data.roles,
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(data.username)}&background=06b6d4&color=fff`,
-        joinedDate: new Date().toISOString(),
-        lastActive: new Date().toISOString()
-      };
+      let userWithId;
+      let authToken;
       
-      setUser(userInfo);
-      localStorage.setItem('user', JSON.stringify(userInfo));
-      localStorage.setItem('token', data.token);
+      if (userData.type === 'google') {
+        // Handle Google OAuth login - for now, keep demo behavior
+        const { userInfo } = userData;
+        userWithId = {
+          id: userInfo.sub,
+          email: userInfo.email,
+          username: userInfo.name,
+          name: userInfo.name,
+          avatar: userInfo.picture,
+          googleId: userInfo.sub,
+          joinedDate: new Date().toISOString(),
+          lastActive: new Date().toISOString(),
+          authType: 'google'
+        };
+        authToken = 'demo-token-' + Date.now(); // For demo purposes
+      } else if (userData.type === 'github') {
+        // Handle GitHub OAuth login - for now, keep demo behavior
+        const { userInfo } = userData;
+        userWithId = {
+          id: userInfo.id,
+          email: userInfo.email,
+          username: userInfo.login,
+          name: userInfo.name,
+          avatar: userInfo.avatar_url,
+          githubId: userInfo.id,
+          joinedDate: new Date().toISOString(),
+          lastActive: new Date().toISOString(),
+          authType: 'github'
+        };
+        authToken = 'demo-token-' + Date.now(); // For demo purposes
+      } else {
+        // Handle regular email/password login - CALL BACKEND
+        console.log('Sending signin request to backend with email:', userData.email);
+        
+        const response = await fetch(`${API_BASE_URL}/auth/signin`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: userData.email,
+            password: userData.password
+          }),
+        });
+
+        console.log('Backend signin response status:', response.status);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Backend signin error:', errorData);
+          throw new Error(errorData.message || 'Invalid credentials');
+        }
+
+        const authData = await response.json();
+        console.log('Successful signin response:', authData);
+        authToken = authData.token;
+        
+        userWithId = {
+          id: authData.id,
+          email: authData.email,
+          username: authData.username,
+          name: authData.username, // Use username as display name
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(authData.username)}&background=06b6d4&color=fff`,
+          roles: authData.roles,
+          joinedDate: new Date().toISOString(),
+          lastActive: new Date().toISOString(),
+          authType: 'email'
+        };
+      }
+      
+      setUser(userWithId);
+      setToken(authToken);
+      localStorage.setItem('user', JSON.stringify(userWithId));
+      localStorage.setItem('token', authToken);
       
       return { success: true };
     } catch (error) {
@@ -104,27 +196,90 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       
-      const response = await fetch(`${API_BASE_URL}/auth/signup`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
+      let userWithId;
+      let authToken;
+      
+      if (userData.type === 'google') {
+        // Handle Google OAuth signup - for now, keep demo behavior
+        const { userInfo } = userData;
+        userWithId = {
+          id: userInfo.sub,
+          email: userInfo.email,
+          username: userInfo.name,
+          name: userInfo.name,
+          avatar: userInfo.picture,
+          googleId: userInfo.sub,
+          joinedDate: new Date().toISOString(),
+          lastActive: new Date().toISOString(),
+          authType: 'google'
+        };
+        authToken = 'demo-token-' + Date.now(); // For demo purposes
+      } else if (userData.type === 'github') {
+        // Handle GitHub OAuth signup - for now, keep demo behavior
+        const { userInfo } = userData;
+        userWithId = {
+          id: userInfo.id,
+          email: userInfo.email,
+          username: userInfo.login,
+          name: userInfo.name,
+          avatar: userInfo.avatar_url,
+          githubId: userInfo.id,
+          joinedDate: new Date().toISOString(),
+          lastActive: new Date().toISOString(),
+          authType: 'github'
+        };
+        authToken = 'demo-token-' + Date.now(); // For demo purposes
+      } else {
+        // Handle regular email/password signup - CALL BACKEND
+        console.log('Sending signup request to backend with data:', {
+          email: userData.email,
+          username: userData.username,
+          // Don't log password for security
+        });
+        
+        const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: userData.email,
+            password: userData.password,
+            username: userData.username
+          }),
+        });
 
-      const data = await response.json();
+        console.log('Backend response status:', response.status);
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to sign up');
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Backend error response:', errorData);
+          throw new Error(errorData.message || 'Failed to create account');
+        }
+
+        const authData = await response.json();
+        console.log('Successful signup response:', authData);
+        authToken = authData.token;
+        
+        userWithId = {
+          id: authData.id,
+          email: authData.email,
+          username: authData.username,
+          name: authData.username, // Use username as display name
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(authData.username)}&background=8b5cf6&color=fff`,
+          roles: authData.roles,
+          joinedDate: new Date().toISOString(),
+          lastActive: new Date().toISOString(),
+          authType: 'email'
+        };
       }
-
-      // After successful signup, automatically sign in the user
-      const signInResult = await signIn({
-        email: userData.email,
-        password: userData.password
-      });
-
-      return signInResult;
+      
+      setUser(userWithId);
+      setToken(authToken);
+      localStorage.setItem('user', JSON.stringify(userWithId));
+      localStorage.setItem('token', authToken);
+      
+      return { success: true };
     } catch (error) {
       console.error('Sign up error:', error);
       return { success: false, error: error.message };
@@ -134,7 +289,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const signOut = () => {
+    // Sign out from Google if user was signed in with Google
+    if (user && user.authType === 'google') {
+      signOutGoogle();
+    }
+    
     setUser(null);
+    setToken(null);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
   };
@@ -149,13 +310,14 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
+    token,
     loading,
     signIn,
     signUp,
     signOut,
     updateProfile,
     isAuthenticated: !!user,
-    getToken: () => localStorage.getItem('token'),
+    getToken: () => token || localStorage.getItem('token'),
     validateToken
   };
 

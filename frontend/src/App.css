@@ -41,23 +41,42 @@
   color: #888;
 }
 
-/* Premium AI Image Animations */
-@keyframes shimmer {
-  0% { transform: translateX(-100%) rotate(45deg); }
-  50% { transform: translateX(100%) rotate(45deg); opacity: 0.8; }
-  100% { transform: translateX(200%) rotate(45deg); opacity: 0; }
+/* Enhanced Chat Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes prism {
-  0% { transform: rotate(0deg) scale(1); }
-  50% { transform: rotate(180deg) scale(1.1); }
-  100% { transform: rotate(360deg) scale(1); }
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-30px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
-@keyframes shine {
-  0% { opacity: 0.2; transform: scale(0.95); }
-  50% { opacity: 0.4; transform: scale(1.05); }
-  100% { opacity: 0.2; transform: scale(0.95); }
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes gentleBounce {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
 }
 
 @keyframes float {
@@ -68,19 +87,275 @@
   100% { transform: translateY(0px) rotate(0deg); }
 }
 
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
 @keyframes glow {
-  0% { filter: brightness(1) drop-shadow(0 0 10px rgba(255, 255, 255, 0.3)); }
-  50% { filter: brightness(1.1) drop-shadow(0 0 30px rgba(255, 255, 255, 0.6)); }
-  100% { filter: brightness(1) drop-shadow(0 0 10px rgba(255, 255, 255, 0.3)); }
+  0% { 
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+    filter: brightness(1);
+  }
+  50% { 
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.4);
+    filter: brightness(1.1);
+  }
+  100% { 
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+    filter: brightness(1);
+  }
 }
 
-@keyframes energy-pulse {
-  0% { opacity: 0.3; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.02); }
-  100% { opacity: 0.3; transform: scale(1); }
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.02); opacity: 0.9; }
 }
 
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Custom utility classes */
+.animate-fadeIn {
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+.animate-slideInLeft {
+  animation: slideInLeft 0.5s ease-out forwards;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.5s ease-out forwards;
+}
+
+.animate-slideInUp {
+  animation: slideInUp 0.5s ease-out forwards;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.4s ease-out forwards;
+}
+
+.animate-gentleBounce {
+  animation: gentleBounce 2s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-breathe {
+  animation: breathe 4s ease-in-out infinite;
+}
+
+.animate-glow {
+  animation: glow 3s ease-in-out infinite;
+}
+
+/* Scrollbar styling */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Enhanced button hover effects */
+.scale-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scale-hover:hover {
+  transform: scale(1.05);
+}
+
+.scale-hover:active {
+  transform: scale(0.95);
+}
+
+/* Glass morphism effect */
+.glass {
+  backdrop-filter: blur(16px) saturate(180%);
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Gradient animations */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradientShift 4s ease infinite;
+}
+
+/* Voice waveform specific */
+@keyframes waveformPulse {
+  0% { 
+    transform: scale(1);
+    filter: brightness(1) blur(0px);
+  }
+  50% { 
+    transform: scale(1.02);
+    filter: brightness(1.1) blur(0.5px);
+  }
+  100% { 
+    transform: scale(1);
+    filter: brightness(1) blur(0px);
+  }
+}
+
+@keyframes aiGlow {
+  0% { 
+    box-shadow: 0 0 20px currentColor, 0 0 40px currentColor, inset 0 0 20px currentColor;
+    filter: brightness(1);
+  }
+  50% { 
+    box-shadow: 0 0 30px currentColor, 0 0 60px currentColor, inset 0 0 30px currentColor;
+    filter: brightness(1.2);
+  }
+  100% { 
+    box-shadow: 0 0 20px currentColor, 0 0 40px currentColor, inset 0 0 20px currentColor;
+    filter: brightness(1);
+  }
+}
+
+@keyframes particleFloat {
+  0% { 
+    opacity: 0.3;
+    transform: translateY(0px) translateX(0px) scale(1);
+  }
+  25% { 
+    opacity: 0.7;
+    transform: translateY(-10px) translateX(5px) scale(1.2);
+  }
+  50% { 
+    opacity: 0.5;
+    transform: translateY(-5px) translateX(-3px) scale(0.8);
+  }
+  75% { 
+    opacity: 0.8;
+    transform: translateY(-15px) translateX(8px) scale(1.1);
+  }
+  100% { 
+    opacity: 0.3;
+    transform: translateY(0px) translateX(0px) scale(1);
+  }
+}
+
+/* Media button animations */
+.media-button {
+  animation: breathe 4s ease-in-out infinite;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.media-button:hover {
+  animation: none;
+  transform: scale(1.1);
+}
+
+/* Voice UI specific animations */
+.voice-active {
+  animation: waveformPulse 2s ease-in-out infinite;
+}
+
+.ai-avatar {
+  animation: aiGlow 3s ease-in-out infinite;
+}
+
+.voice-ring {
+  animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.voice-particle {
+  animation: particleFloat 4s ease-in-out infinite;
+}
+
+/* Performance optimizations */
+.waveform-canvas {
+  will-change: transform, filter;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Custom gradient backgrounds */
+.gradient-mesh {
+  background: linear-gradient(45deg, 
+    rgba(59, 130, 246, 0.1) 0%, 
+    rgba(147, 51, 234, 0.05) 25%, 
+    rgba(16, 185, 129, 0.1) 50%, 
+    rgba(59, 130, 246, 0.05) 75%, 
+    rgba(147, 51, 234, 0.1) 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 8s ease infinite;
+}
+
+/* Enhanced ripple effect */
+@keyframes ripple {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.ripple-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple-effect::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.2);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ripple-effect:active::before {
+  animation: ripple 0.6s linear;
+}
+
+/* Chat bubble animations */
+.chat-bubble {
+  animation: slideInUp 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: all 0.3s ease;
+}
+
+.chat-bubble:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+/* Enhanced loading states */
+@keyframes skeleton {
+  0% {
+    background-position: -468px 0;
+  }
+  100% {
+    background-position: 468px 0;
+  }
+}
+
+.skeleton {
+  animation: skeleton 1.8s ease-in-out infinite;
+  background: linear-gradient(90deg, 
+    rgba(255, 255, 255, 0.05) 25%, 
+    rgba(255, 255, 255, 0.1) 37%, 
+    rgba(255, 255, 255, 0.05) 63%);
+  background-size: 400px 100%;
 }
