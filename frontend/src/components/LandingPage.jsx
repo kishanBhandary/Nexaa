@@ -78,7 +78,7 @@ const LandingPage = ({ onNavigateToSignUp, onNavigateToSignIn }) => {
         <div className="absolute inset-0 bg-gradient-to-br from-gray-900/20 via-transparent to-gray-800/30"></div>
         
         {/* Animated Stars - Mobile Optimized */}
-        {[...Array(window.innerWidth < 768 ? 50 : 100)].map((_, i) => (
+        {[...Array(typeof window !== 'undefined' && window.innerWidth < 768 ? 30 : 80)].map((_, i) => (
           <div
             key={i}
             className="absolute rounded-full bg-white"
@@ -217,19 +217,19 @@ const LandingPage = ({ onNavigateToSignUp, onNavigateToSignIn }) => {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 sm:pt-6">
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-4 pt-6 sm:pt-8">
               <button 
                 onClick={onNavigateToSignUp}
-                className="touch-button group bg-gradient-to-r from-white via-gray-200 to-gray-300 text-black px-6 sm:px-8 py-3 sm:py-4 rounded-2xl font-semibold flex items-center justify-center gap-2 sm:gap-3 hover:shadow-2xl hover:shadow-white/30 transition-all duration-500 transform hover:scale-[1.02] border border-white/20 text-sm sm:text-base"
+                className="mobile-button tablet-button desktop-button touch-feedback group bg-gradient-to-r from-white via-gray-200 to-gray-300 text-black font-semibold flex items-center justify-center gap-2 sm:gap-3 hover:shadow-2xl hover:shadow-white/30 transition-all duration-500 transform hover:scale-[1.02] border border-white/20 text-base sm:text-lg focus-ring rounded-2xl w-full sm:w-auto"
               >
-                <Zap className="group-hover:rotate-12 transition-transform duration-300" size={18} />
+                <Zap className="group-hover:rotate-12 transition-transform duration-300" size={20} />
                 Start Your Journey
-                <ArrowRight className="group-hover:translate-x-1 transition-transform duration-300" size={18} />
+                <ArrowRight className="group-hover:translate-x-1 transition-transform duration-300" size={20} />
               </button>
               
               <button 
                 onClick={onNavigateToSignIn}
-                className="touch-button group bg-white/5 backdrop-blur-sm text-white px-6 sm:px-8 py-3 sm:py-4 rounded-2xl font-semibold border border-white/10 hover:border-white/30 hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-2 text-sm sm:text-base"
+                className="mobile-button tablet-button desktop-button touch-feedback group bg-white/5 backdrop-blur-sm text-white font-semibold border border-white/10 hover:border-white/30 hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-2 focus-ring rounded-2xl w-full sm:w-auto"
               >
                 Talk to Nexa
                 <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
@@ -363,8 +363,11 @@ const LandingPage = ({ onNavigateToSignUp, onNavigateToSignIn }) => {
               <div 
                 key={developer.id}
                 onClick={() => openDeveloperModal(developer)}
-                className="touch-button group bg-gray-800/30 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-white/20 hover:border-white/40 transition-all duration-300 hover:bg-gray-800/40 animate-fadeInUp cursor-pointer hover:scale-105 hover:-translate-y-2 hover:shadow-2xl hover:shadow-white/20" 
+                className="mobile-card tablet-card desktop-card touch-feedback group bg-gray-800/30 backdrop-blur-sm border border-white/20 hover:border-white/40 transition-all duration-300 hover:bg-gray-800/40 animate-fadeInUp cursor-pointer hover:scale-105 hover:-translate-y-2 hover:shadow-2xl hover:shadow-white/20 focus-ring" 
                 style={{ animationDelay: `${index * 0.1}s` }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && openDeveloperModal(developer)}
               >
                 <div className="text-center">
                   {/* Photo */}

@@ -24,6 +24,30 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 import requests
 
+# Import continuous emotion recognition
+try:
+    from continuous_emotion_recognition import get_continuous_recognizer, cleanup_continuous_recognizer
+    CONTINUOUS_RECOGNITION_AVAILABLE = True
+except ImportError:
+    CONTINUOUS_RECOGNITION_AVAILABLE = False
+    print("⚠ Continuous emotion recognition not available")
+
+# Import advanced face emotion model
+try:
+    from advanced_face_emotion_model import get_advanced_face_recognizer
+    ADVANCED_FACE_MODEL_AVAILABLE = True
+except ImportError:
+    ADVANCED_FACE_MODEL_AVAILABLE = False
+    print("⚠ Advanced face emotion model not available")
+
+# Import real PyTorch emotion model
+try:
+    from real_pytorch_emotion_model import get_real_pytorch_recognizer
+    REAL_PYTORCH_MODEL_AVAILABLE = True
+except ImportError:
+    REAL_PYTORCH_MODEL_AVAILABLE = False
+    print("⚠ Real PyTorch emotion model not available")
+
 # Initialize FastAPI app
 app = FastAPI(
     title="NexaModel Emotion Recognition API",
@@ -54,13 +78,19 @@ TEMP_DIR.mkdir(exist_ok=True)
 
 # Global variables
 emotion_recognizer = None
+continuous_recognizer = None
+advanced_face_recognizer = None
+real_pytorch_recognizer = None
 dependencies_loaded = {
     'numpy': False,
     'opencv': False,
     'librosa': False,
     'gtts': False,
     'aiofiles': False,
-    'nexamodel': False
+    'nexamodel': False,
+    'continuous_recognition': CONTINUOUS_RECOGNITION_AVAILABLE,
+    'advanced_face_model': ADVANCED_FACE_MODEL_AVAILABLE,
+    'real_pytorch_model': REAL_PYTORCH_MODEL_AVAILABLE
 }
 
 # Pydantic models
@@ -217,7 +247,7 @@ def check_dependencies():
 # Startup event
 @app.on_event("startup")
 async def startup_event():
-    global emotion_recognizer
+    global emotion_recognizer, continuous_recognizer, advanced_face_recognizer, real_pytorch_recognizer
     
     print("Starting NexaModel FastAPI Service...")
     
@@ -246,6 +276,54 @@ async def startup_event():
         print(f"Failed to load emotion model: {e}")
         emotion_recognizer = MockEmotionRecognizer()
         print("✓ Mock emotion recognizer loaded as fallback")
+    
+    # Initialize continuous emotion recognizer
+    if CONTINUOUS_RECOGNITION_AVAILABLE:
+        try:
+            continuous_recognizer = get_continuous_recognizer()
+            print("✓ Continuous emotion recognizer loaded successfully")
+        except Exception as e:
+            print(f"Failed to load continuous recognizer: {e}")
+            continuous_recognizer = None
+    else:
+        continuous_recognizer = None
+        print("⚠ Continuous emotion recognition not available")
+    
+    # Initialize advanced face emotion recognizer
+    if ADVANCED_FACE_MODEL_AVAILABLE:
+        try:
+            advanced_face_recognizer = get_advanced_face_recognizer()
+            print("✓ Advanced face-priority emotion recognizer loaded successfully")
+        except Exception as e:
+            print(f"Failed to load advanced face recognizer: {e}")
+            advanced_face_recognizer = None
+    else:
+        advanced_face_recognizer = None
+        print("⚠ Advanced face emotion recognition not available")
+    
+    # Initialize real PyTorch emotion recognizer
+    if REAL_PYTORCH_MODEL_AVAILABLE:
+        try:
+            real_pytorch_recognizer = get_real_pytorch_recognizer()
+            print("✅ Real PyTorch emotion recognition model loaded successfully")
+            print("🔥 Now using REAL CNN-based emotion recognition instead of mock!")
+        except Exception as e:
+            print(f"Failed to load real PyTorch recognizer: {e}")
+            real_pytorch_recognizer = None
+    else:
+        real_pytorch_recognizer = None
+        print("⚠ Real PyTorch emotion recognition not available")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown"""
+    global continuous_recognizer
+    if continuous_recognizer and CONTINUOUS_RECOGNITION_AVAILABLE:
+        try:
+            cleanup_continuous_recognizer()
+            print("✓ Continuous emotion recognizer cleaned up")
+        except Exception as e:
+            print(f"Error cleaning up continuous recognizer: {e}")
 
 # Helper functions
 async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
@@ -736,6 +814,406 @@ async def analyze_continuous_emotion(
                     pass
         
         raise HTTPException(status_code=500, detail=f"Continuous analysis failed: {str(e)}")
+
+@app.post("/face/start-tracking")
+async def start_face_tracking(user_data = Depends(verify_token)):
+    """
+    Start continuous face emotion tracking
+    """
+    global continuous_recognizer
+    
+    if not continuous_recognizer:
+        raise HTTPException(status_code=503, detail="Continuous emotion recognition not available")
+    
+    try:
+        success = continuous_recognizer.start_face_tracking()
+        
+        if success:
+            return {
+                "status": "success",
+                "message": "Face tracking started successfully",
+                "tracking_active": True
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Failed to start face tracking")
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Face tracking error: {str(e)}")
+
+@app.post("/face/stop-tracking")
+async def stop_face_tracking(user_data = Depends(verify_token)):
+    """
+    Stop continuous face emotion tracking
+    """
+    global continuous_recognizer
+    
+    if not continuous_recognizer:
+        raise HTTPException(status_code=503, detail="Continuous emotion recognition not available")
+    
+    try:
+        continuous_recognizer.stop_face_tracking()
+        return {
+            "status": "success",
+            "message": "Face tracking stopped successfully",
+            "tracking_active": False
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Face tracking stop error: {str(e)}")
+
+@app.get("/face/status")
+async def get_face_tracking_status(user_data = Depends(verify_token)):
+    """
+    Get current face tracking status and recent emotion detection
+    """
+    global continuous_recognizer
+    
+    if not continuous_recognizer:
+        return {
+            "available": False,
+            "message": "Continuous emotion recognition not available"
+        }
+    
+    try:
+        status = continuous_recognizer.get_status()
+        return {
+            "available": True,
+            "status": status
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Status error: {str(e)}")
+
+@app.post("/analyze/authentic-emotion")
+async def analyze_authentic_emotion(
+    text: Optional[str] = Form(None),
+    force_face_capture: Optional[bool] = Form(False),
+    user_data = Depends(verify_token)
+):
+    """
+    Analyze emotion with authenticity verification using both face and text
+    This endpoint prevents fake emotion responses by comparing face and text emotions
+    """
+    global continuous_recognizer
+    
+    if not continuous_recognizer:
+        raise HTTPException(status_code=503, detail="Continuous emotion recognition not available")
+    
+    try:
+        # Perform multimodal emotion analysis
+        result = continuous_recognizer.analyze_multimodal_emotion(
+            text=text,
+            force_face_capture=force_face_capture
+        )
+        
+        # Convert result to response format
+        response = {
+            "analysis_id": str(uuid.uuid4()),
+            "timestamp": datetime.datetime.now().isoformat(),
+            "final_emotion": result.final_emotion,
+            "confidence": float(result.final_confidence),
+            "is_authentic": result.is_authentic,
+            "consistency_score": float(result.consistency_score),
+            "explanation": result.explanation,
+            "modalities": []
+        }
+        
+        # Add individual modality results
+        if result.face_emotion:
+            response["face_emotion"] = {
+                "emotion": result.face_emotion.emotion,
+                "confidence": float(result.face_emotion.confidence),
+                "timestamp": result.face_emotion.timestamp.isoformat()
+            }
+            response["modalities"].append("face")
+        
+        if result.text_emotion:
+            response["text_emotion"] = {
+                "emotion": result.text_emotion.emotion,
+                "confidence": float(result.text_emotion.confidence),
+                "timestamp": result.text_emotion.timestamp.isoformat()
+            }
+            response["modalities"].append("text")
+        
+        # Add recommendation based on authenticity
+        if not result.is_authentic:
+            response["recommendation"] = "The detected emotion may not be authentic. Consider the explanation for details."
+        else:
+            response["recommendation"] = "The detected emotion appears to be authentic based on multimodal analysis."
+        
+        return response
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Authentic emotion analysis failed: {str(e)}")
+
+@app.get("/system/continuous-status")
+async def get_continuous_system_status():
+    """
+    Get comprehensive status of the continuous emotion recognition system
+    """
+    global continuous_recognizer
+    
+    base_status = {
+        "continuous_recognition_available": CONTINUOUS_RECOGNITION_AVAILABLE,
+        "continuous_recognizer_loaded": continuous_recognizer is not None
+    }
+    
+    if continuous_recognizer:
+        try:
+            detailed_status = continuous_recognizer.get_status()
+            base_status.update(detailed_status)
+        except Exception as e:
+            base_status["error"] = str(e)
+    
+    return base_status
+
+@app.post("/analyze/face-priority")
+async def analyze_face_priority_emotion(
+    text: Optional[str] = Form(None),
+    image_file: Optional[UploadFile] = File(None),
+    user_data = Depends(verify_token)
+):
+    """
+    Advanced face-priority emotion analysis that prioritizes facial expressions
+    over text input to prevent fake emotion responses
+    """
+    global advanced_face_recognizer
+    
+    if not advanced_face_recognizer:
+        raise HTTPException(status_code=503, detail="Advanced face emotion recognition not available")
+    
+    try:
+        analysis_id = str(uuid.uuid4())
+        
+        face_result = None
+        text_result = None
+        
+        # Process image if provided
+        if image_file:
+            try:
+                image_content = await image_file.read()
+                face_result = advanced_face_recognizer.predict_face_emotion(image_content)
+            except Exception as e:
+                print(f"Face analysis error: {e}")
+        
+        # Process text if provided (with lower priority)
+        if text and text.strip():
+            # Simple text emotion analysis for comparison
+            text_lower = text.lower()
+            
+            if any(word in text_lower for word in ['happy', 'joy', 'excited', 'great']):
+                text_result = {'predicted_emotion': 'happy', 'confidence': 0.7}
+            elif any(word in text_lower for word in ['sad', 'down', 'depressed']):
+                text_result = {'predicted_emotion': 'sad', 'confidence': 0.7}
+            elif any(word in text_lower for word in ['angry', 'mad', 'furious']):
+                text_result = {'predicted_emotion': 'angry', 'confidence': 0.7}
+            elif any(word in text_lower for word in ['scared', 'afraid', 'worried']):
+                text_result = {'predicted_emotion': 'fear', 'confidence': 0.7}
+            else:
+                text_result = {'predicted_emotion': 'neutral', 'confidence': 0.5}
+        
+        # Determine final result with face priority
+        if face_result and text_result:
+            # Use advanced validation
+            validation = advanced_face_recognizer.validate_emotion_authenticity(
+                face_result['predicted_emotion'], face_result['confidence'],
+                text_result['predicted_emotion'], text_result['confidence']
+            )
+            
+            response = {
+                "analysis_id": analysis_id,
+                "timestamp": datetime.datetime.now().isoformat(),
+                "final_emotion": validation['final_emotion'],
+                "confidence": validation['final_confidence'],
+                "is_authentic": validation['is_authentic'],
+                "explanation": validation['explanation'],
+                "face_priority_weight": validation['face_weight'],
+                "text_weight": validation['text_weight'],
+                "compatibility_score": validation['compatibility_score'],
+                "face_analysis": {
+                    "emotion": face_result['predicted_emotion'],
+                    "confidence": face_result['confidence'],
+                    "method": face_result.get('method', 'unknown'),
+                    "faces_detected": face_result.get('faces_detected', 0)
+                },
+                "text_analysis": {
+                    "emotion": text_result['predicted_emotion'],
+                    "confidence": text_result['confidence']
+                },
+                "priority": "Face emotion takes priority over text"
+            }
+        elif face_result:
+            # Face only - high trust
+            response = {
+                "analysis_id": analysis_id,
+                "timestamp": datetime.datetime.now().isoformat(),
+                "final_emotion": face_result['predicted_emotion'],
+                "confidence": face_result['confidence'],
+                "is_authentic": face_result['confidence'] > 0.6,
+                "explanation": f"Face-only analysis: {face_result['predicted_emotion']} detected from facial expression",
+                "face_analysis": {
+                    "emotion": face_result['predicted_emotion'],
+                    "confidence": face_result['confidence'],
+                    "method": face_result.get('method', 'unknown'),
+                    "faces_detected": face_result.get('faces_detected', 0)
+                },
+                "priority": "Face emotion only - highly trusted"
+            }
+        elif text_result:
+            # Text only - lower trust
+            response = {
+                "analysis_id": analysis_id,
+                "timestamp": datetime.datetime.now().isoformat(),
+                "final_emotion": text_result['predicted_emotion'],
+                "confidence": text_result['confidence'] * 0.6,  # Reduce confidence without face
+                "is_authentic": False,  # Cannot verify without face
+                "explanation": f"⚠️ Text-only analysis: {text_result['predicted_emotion']}. Cannot verify authenticity without facial expression.",
+                "text_analysis": {
+                    "emotion": text_result['predicted_emotion'],
+                    "confidence": text_result['confidence']
+                },
+                "warning": "Facial verification recommended for authenticity",
+                "priority": "Text only - requires face verification"
+            }
+        else:
+            # No input
+            response = {
+                "analysis_id": analysis_id,
+                "timestamp": datetime.datetime.now().isoformat(),
+                "final_emotion": "neutral",
+                "confidence": 0.3,
+                "is_authentic": False,
+                "explanation": "No face or text input provided",
+                "error": "No analysis data available"
+            }
+        
+        return response
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Face-priority analysis failed: {str(e)}")
+
+@app.post("/analyze/real-emotion")
+async def analyze_real_emotion(
+    text: Optional[str] = Form(None),
+    image_file: Optional[UploadFile] = File(None),
+    user_data = Depends(verify_token)
+):
+    """
+    Real emotion analysis using PyTorch CNN models - NOT MOCK!
+    This endpoint uses actual trained neural networks for emotion recognition
+    """
+    global real_pytorch_recognizer
+    
+    if not real_pytorch_recognizer:
+        raise HTTPException(status_code=503, detail="Real PyTorch emotion recognition not available")
+    
+    try:
+        analysis_id = str(uuid.uuid4())
+        
+        face_result = None
+        text_result = None
+        
+        # Process image with REAL CNN model
+        if image_file:
+            try:
+                image_content = await image_file.read()
+                face_result = real_pytorch_recognizer.predict_emotion(image_content)
+                print(f"🔥 REAL CNN Face Analysis: {face_result.emotion} ({face_result.confidence:.3f})")
+            except Exception as e:
+                print(f"Real face analysis error: {e}")
+        
+        # Process text with REAL analysis
+        if text and text.strip():
+            text_result = real_pytorch_recognizer.predict_text_emotion(text)
+            print(f"🔥 REAL Text Analysis: {text_result.emotion} ({text_result.confidence:.3f})")
+        
+        # Determine final result
+        if face_result and text_result:
+            # Prioritize face (80%) over text (20%)
+            face_weight = 0.8
+            text_weight = 0.2
+            
+            # Weighted confidence
+            final_confidence = (face_result.confidence * face_weight + 
+                              text_result.confidence * text_weight)
+            
+            # Use face emotion as primary
+            final_emotion = face_result.emotion
+            
+            response = {
+                "analysis_id": analysis_id,
+                "timestamp": datetime.datetime.now().isoformat(),
+                "final_emotion": final_emotion,
+                "confidence": final_confidence,
+                "is_real_model": True,
+                "model_type": "PyTorch CNN",
+                "face_analysis": {
+                    "emotion": face_result.emotion,
+                    "confidence": face_result.confidence,
+                    "method": face_result.method,
+                    "all_probabilities": face_result.all_probabilities
+                },
+                "text_analysis": {
+                    "emotion": text_result.emotion,
+                    "confidence": text_result.confidence,
+                    "method": text_result.method,
+                    "all_probabilities": text_result.all_probabilities
+                },
+                "weighting": {
+                    "face_weight": face_weight,
+                    "text_weight": text_weight
+                },
+                "note": "🔥 This is REAL CNN-based emotion recognition, not mock responses!"
+            }
+        elif face_result:
+            # Face only - REAL CNN analysis
+            response = {
+                "analysis_id": analysis_id,
+                "timestamp": datetime.datetime.now().isoformat(),
+                "final_emotion": face_result.emotion,
+                "confidence": face_result.confidence,
+                "is_real_model": True,
+                "model_type": "PyTorch CNN",
+                "face_analysis": {
+                    "emotion": face_result.emotion,
+                    "confidence": face_result.confidence,
+                    "method": face_result.method,
+                    "all_probabilities": face_result.all_probabilities
+                },
+                "note": "🔥 Face-only REAL CNN emotion recognition - highly accurate!"
+            }
+        elif text_result:
+            # Text only - REAL analysis
+            response = {
+                "analysis_id": analysis_id,
+                "timestamp": datetime.datetime.now().isoformat(),
+                "final_emotion": text_result.emotion,
+                "confidence": text_result.confidence,
+                "is_real_model": True,
+                "model_type": "Real Text Analysis",
+                "text_analysis": {
+                    "emotion": text_result.emotion,
+                    "confidence": text_result.confidence,
+                    "method": text_result.method,
+                    "all_probabilities": text_result.all_probabilities
+                },
+                "note": "🔥 Real text-based emotion analysis - no mock responses!"
+            }
+        else:
+            # No input
+            response = {
+                "analysis_id": analysis_id,
+                "timestamp": datetime.datetime.now().isoformat(),
+                "final_emotion": "neutral",
+                "confidence": 0.5,
+                "is_real_model": True,
+                "error": "No input provided for analysis"
+            }
+        
+        return response
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Real emotion analysis failed: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
