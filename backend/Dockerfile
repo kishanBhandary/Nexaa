@@ -14,13 +14,11 @@ WORKDIR /app
 # RUN mvn clean package -DskipTests
 
 # Stage 2: Runtime stage
-FROM openjdk:17-jre-slim
+FROM eclipse-temurin:17-jre-alpine AS runtime
 
 # Install necessary packages and create non-root user
-RUN apt-get update && apt-get install -y \
-    curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && groupadd -r nexaa && useradd -r -g nexaa nexaa
+RUN apk add --no-cache curl && \
+  addgroup -S nexaa && adduser -S nexaa -G nexaa
 
 # Set working directory
 WORKDIR /app
@@ -36,19 +34,20 @@ RUN mkdir -p /app/logs && \
 # Switch to non-root user
 USER nexaa
 
-# Expose the port
+# Expose the default application port (Render will inject PORT)
 EXPOSE 8080
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8080/api/actuator/health || exit 1
+# Health check (adjust path if your app exposes a different endpoint)
+# Uses dynamic PORT provided by Render; replace /api/health with a valid endpoint.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=5 CMD curl -f http://127.0.0.1:${PORT:-8080}/api/health || exit 1
 
 # Set JVM options for containerized environment
-ENV JAVA_OPTS="-Xms512m -Xmx1024m -XX:+UseG1GC -XX:G1HeapRegionSize=16m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:/app/logs/gc.log -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=5 -XX:GCLogFileSize=10M"
+ENV JAVA_OPTS="-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
 
 # Spring Boot specific environment variables
 ENV SPRING_PROFILES_ACTIVE=docker
-ENV SERVER_PORT=8080
+# PORT is provided by Render automatically; Spring Boot uses server.port=${PORT:8080}
 
 # Run the application
 CMD ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
