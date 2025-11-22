@@ -77,9 +77,10 @@ app = FastAPI(
 )
 
 # Configure CORS
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],  # React dev servers
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -89,9 +90,10 @@ app.add_middleware(
 security = HTTPBearer()
 
 # Configuration
-UPLOAD_DIR = Path("./uploads")
-TEMP_DIR = Path("./temp")
-MODEL_DIR = Path("../nexamodel/NexaModel_Complete")
+UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "./uploads"))
+TEMP_DIR = Path(os.getenv("TEMP_DIR", "./temp"))
+MODEL_DIR = Path(os.getenv("MODEL_DIR", "../nexamodel/NexaModel_Complete"))
+SPRING_BOOT_AUTH_URL = os.getenv("SPRING_BOOT_AUTH_URL", "http://localhost:8080")
 
 # Create directories
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -143,7 +145,7 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
         token = credentials.credentials
         
         # Validate token with Spring Boot service
-        auth_service_url = "http://localhost:8080/auth/validate"
+        auth_service_url = f"{SPRING_BOOT_AUTH_URL}/auth/validate"
         response = requests.get(f"{auth_service_url}?token={token}")
         
         if response.status_code != 200:
@@ -485,4 +487,5 @@ async def general_exception_handler(request, exc):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    port = int(os.getenv("PORT", 8001))
+    uvicorn.run(app, host="0.0.0.0", port=port)

@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: nexaa-ml-service
+    env: python
+    region: oregon
+    plan: starter
+    buildCommand: ./render-build.sh
+    startCommand: ./render-start.sh
+    envVars:
+      - key: SPRING_BOOT_AUTH_URL
+        value: https://nexaa-backend.onrender.com
+      - key: MODEL_DIR
+        value: ../nexamodel/NexaModel_Complete
+      - key: UPLOAD_DIR
+        value: ./uploads
+      - key: TEMP_DIR
+        value: ./temp
+      - key: CORS_ORIGINS
+        value: https://nexaa-frontend.onrender.com,https://nexaa-backend.onrender.com
+      - key: LOG_LEVEL
+        value: INFO
+      - key: MAX_UPLOAD_SIZE
+        value: 50
+      - key: MAX_AUDIO_DURATION
+        value: 300
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: TTS_LANGUAGE
+        value: en
