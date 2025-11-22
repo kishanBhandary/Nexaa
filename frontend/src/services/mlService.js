@@ -5,7 +5,7 @@
  * for emotion recognition and analysis.
  */
 
-const ML_API_BASE = 'http://localhost:8001';
+const ML_API_BASE = import.meta.env.VITE_ML_API_BASE || 'http://localhost:8001';
 
 class MLService {
   constructor() {

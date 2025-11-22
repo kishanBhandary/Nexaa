@@ -136,7 +136,7 @@ const ChatPage = () => {
       const formData = new FormData();
       formData.append('video_file', imageBlob, 'initial_capture.jpg');
       
-      const response = await fetch('http://localhost:8001/analyze/video', {
+      const response = await fetch(`${import.meta.env.VITE_ML_API_BASE || 'http://localhost:8001'}/analyze/video`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer demo-token-123` },
         body: formData
@@ -262,7 +262,7 @@ const ChatPage = () => {
       try {
         setIsAnalyzingEmotion(true);
         
-        const response = await fetch('http://localhost:8001/analyze/text', {
+        const response = await fetch(`${import.meta.env.VITE_ML_API_BASE || 'http://localhost:8001'}/analyze/text`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

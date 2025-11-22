@@ -26,7 +26,7 @@ const EmotionAnalysisPage = ({ user, authToken, onSignOut, onNavigateToChat }) =
   const continuousIntervalRef = useRef(null);
   const continuousStreamRef = useRef(null);
 
-  const API_BASE = 'http://localhost:8001';
+  const API_BASE = import.meta.env.VITE_ML_API_BASE || 'http://localhost:8001';
 
   // Cleanup on unmount
   useEffect(() => {
