@@ -1,0 +1,45 @@
+# Render ignore file - exclude unnecessary files from deployment
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Log files
+*.log
+logs/
+backend.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts we don't need (keep only the final JAR)
+target/maven-archiver/
+target/generated-sources/
+target/nexaa-backend-1.0.0.jar.original
+
+# Source code isn't needed for deployment since we have the JAR
+# But we'll keep src/ in case Render needs to rebuild
+# src/
+
+# Development files
+.env.local
+.env.development
+.env.test
+
+# Documentation
+README.md
+*.md
