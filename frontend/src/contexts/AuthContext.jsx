@@ -142,6 +142,10 @@ export const AuthProvider = ({ children }) => {
         // Handle regular email/password login - CALL BACKEND
         console.log('Sending signin request to backend with email:', userData.email);
         
+        // Add AbortController for request timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
         const response = await fetch(`${API_BASE_URL}/auth/signin`, {
           method: 'POST',
           headers: {
@@ -151,8 +155,10 @@ export const AuthProvider = ({ children }) => {
             email: userData.email,
             password: userData.password
           }),
+          signal: controller.signal
         });
-
+        
+        clearTimeout(timeoutId);
         console.log('Backend signin response status:', response.status);
 
         if (!response.ok) {
@@ -237,6 +243,10 @@ export const AuthProvider = ({ children }) => {
           // Don't log password for security
         });
         
+        // Add AbortController for request timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for signup
+        
         const response = await fetch(`${API_BASE_URL}/auth/signup`, {
           method: 'POST',
           headers: {
@@ -247,7 +257,10 @@ export const AuthProvider = ({ children }) => {
             password: userData.password,
             username: userData.username
           }),
+          signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
 
         console.log('Backend response status:', response.status);
 

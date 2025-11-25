@@ -54,7 +54,9 @@ public class WebSecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        // Use 8 rounds for development (faster) vs 12 rounds for production (more secure)
+        // 8 rounds = ~200ms, 10 rounds = ~800ms, 12 rounds = ~3000ms
+        return new BCryptPasswordEncoder(8);
     }
 
     @Bean

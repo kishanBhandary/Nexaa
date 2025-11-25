@@ -48,6 +48,16 @@ except ImportError:
     REAL_PYTORCH_MODEL_AVAILABLE = False
     print("⚠ Real PyTorch emotion model not available")
 
+# Import Gemini service
+try:
+    import google.generativeai as genai
+    from google.generativeai.types import HarmCategory, HarmBlockThreshold
+    GEMINI_AVAILABLE = True
+    print("✓ Google Gemini AI available")
+except ImportError:
+    GEMINI_AVAILABLE = False
+    print("⚠ Google Gemini AI not available")
+
 # Initialize FastAPI app
 app = FastAPI(
     title="NexaModel Emotion Recognition API",
@@ -81,6 +91,7 @@ emotion_recognizer = None
 continuous_recognizer = None
 advanced_face_recognizer = None
 real_pytorch_recognizer = None
+gemini_model = None
 dependencies_loaded = {
     'numpy': False,
     'opencv': False,
@@ -90,7 +101,8 @@ dependencies_loaded = {
     'nexamodel': False,
     'continuous_recognition': CONTINUOUS_RECOGNITION_AVAILABLE,
     'advanced_face_model': ADVANCED_FACE_MODEL_AVAILABLE,
-    'real_pytorch_model': REAL_PYTORCH_MODEL_AVAILABLE
+    'real_pytorch_model': REAL_PYTORCH_MODEL_AVAILABLE,
+    'gemini': GEMINI_AVAILABLE
 }
 
 # Pydantic models
@@ -98,10 +110,26 @@ class EmotionRequest(BaseModel):
     text: Optional[str] = None
     user_id: Optional[str] = None
 
+class ChatRequest(BaseModel):
+    message: str
+    user_id: Optional[str] = None
+    user_name: Optional[str] = None
+    detected_emotion: Optional[str] = None
+    confidence: Optional[float] = None
+
 class EmotionResponse(BaseModel):
     predicted_emotion: str
     confidence: float
     all_probabilities: Dict[str, float]
+    voice_response_url: Optional[str] = None
+    analysis_id: str
+
+class ChatResponse(BaseModel):
+    response: str
+    success: bool
+    source: str
+    emotion: Optional[str] = None
+    confidence: Optional[float] = None
     voice_response_url: Optional[str] = None
     analysis_id: str
 
@@ -313,6 +341,173 @@ async def startup_event():
     else:
         real_pytorch_recognizer = None
         print("⚠ Real PyTorch emotion recognition not available")
+    
+    # Initialize Gemini AI
+    if GEMINI_AVAILABLE:
+        gemini_success = initialize_gemini()
+        dependencies_loaded['gemini'] = gemini_success
+        if gemini_success:
+            print("✅ Gemini AI loaded successfully")
+        else:
+            print("❌ Failed to load Gemini AI")
+    else:
+        dependencies_loaded['gemini'] = False
+        print("⚠ Gemini AI not available")
+
+def initialize_gemini():
+    """Initialize Gemini AI model"""
+    global gemini_model
+    
+    if not GEMINI_AVAILABLE:
+        return False
+        
+    try:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            print("⚠ GEMINI_API_KEY not found in environment")
+            return False
+            
+        genai.configure(api_key=api_key)
+        
+        generation_config = {
+            "temperature": 0.7,
+            "top_p": 0.95,
+            "top_k": 40,
+            "max_output_tokens": 1024,
+        }
+        
+        safety_settings = [
+            {
+                "category": HarmCategory.HARM_CATEGORY_HARASSMENT,
+                "threshold": HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
+            },
+            {
+                "category": HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                "threshold": HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
+            },
+            {
+                "category": HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                "threshold": HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
+            },
+            {
+                "category": HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                "threshold": HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
+            },
+        ]
+        
+        gemini_model = genai.GenerativeModel(
+            model_name="gemini-pro",
+            generation_config=generation_config,
+            safety_settings=safety_settings
+        )
+        
+        print("✓ Gemini AI initialized successfully")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Failed to initialize Gemini: {e}")
+        return False
+
+async def generate_gemini_response(user_message: str, detected_emotion: str = None, confidence: float = None, user_name: str = None) -> Dict[str, Any]:
+    """Generate response using Gemini AI"""
+    global gemini_model
+    
+    if not gemini_model:
+        return get_fallback_response(detected_emotion, user_name)
+    
+    try:
+        # Build emotion-aware prompt
+        base_prompt = (
+            "You are Nexa, an empathetic AI companion designed to provide emotional support "
+            "and meaningful conversation. You are warm, understanding, and genuinely caring. "
+            "Your responses should be conversational, supportive, and around 2-3 sentences. "
+            "Always maintain a compassionate tone and offer helpful guidance when appropriate."
+        )
+        
+        emotion_context = ""
+        if detected_emotion and confidence:
+            emotion_context = (
+                f"\n\nEMOTION CONTEXT: The user's current emotional state is detected as "
+                f"'{detected_emotion}' with {confidence*100:.1f}% confidence. Please respond "
+                f"with empathy and consideration for this emotional state."
+            )
+        
+        name_context = ""
+        if user_name:
+            name_context = f" The user's name is {user_name}."
+        
+        user_context = f"\n\nUSER MESSAGE: \"{user_message}\""
+        
+        emotion_guidelines = get_emotion_guidelines(detected_emotion)
+        
+        prompt = f"{base_prompt}{emotion_context}{name_context}{user_context}{emotion_guidelines}"
+        
+        # Generate response
+        response = gemini_model.generate_content(prompt)
+        
+        if response.candidates and len(response.candidates) > 0:
+            candidate = response.candidates[0]
+            if candidate.content and candidate.content.parts:
+                generated_text = candidate.content.parts[0].text
+                
+                return {
+                    "response": generated_text.strip(),
+                    "success": True,
+                    "source": "gemini",
+                    "emotion": detected_emotion,
+                    "confidence": confidence,
+                    "message": "Response generated successfully"
+                }
+        
+        return get_fallback_response(detected_emotion, user_name)
+        
+    except Exception as e:
+        print(f"Gemini generation error: {e}")
+        return get_fallback_response(detected_emotion, user_name)
+
+def get_emotion_guidelines(emotion: str = None) -> str:
+    """Get specific response guidelines based on detected emotion"""
+    
+    if not emotion:
+        return "\n\nRespond with warmth and openness, encouraging the user to share more."
+    
+    guidelines = {
+        "happy": "\n\nThe user seems happy - celebrate with them, ask about what's bringing them joy, and share in their positive energy.",
+        "sad": "\n\nThe user appears sad - offer comfort, validate their feelings, let them know they're not alone, and gently encourage them.",
+        "angry": "\n\nThe user seems frustrated or angry - acknowledge their feelings, help them process the emotion, and guide them toward constructive solutions.",
+        "fear": "\n\nThe user appears anxious or fearful - provide reassurance, help them feel safe, and offer practical support or coping strategies.",
+        "surprise": "\n\nThe user seems surprised or excited - engage with their sense of wonder and encourage them to share what's captured their attention.",
+        "disgust": "\n\nThe user appears bothered or disgusted by something - validate their feelings and help them process what's troubling them.",
+        "neutral": "\n\nThe user seems calm and balanced - engage thoughtfully and be ready to follow their conversational lead."
+    }
+    
+    return guidelines.get(emotion.lower(), guidelines["neutral"])
+
+def get_fallback_response(emotion: str = None, user_name: str = None) -> Dict[str, Any]:
+    """Generate fallback response when Gemini is unavailable"""
+    
+    name_prefix = f"{user_name}, " if user_name else ""
+    
+    fallback_responses = {
+        "happy": f"Hi {name_prefix}I can sense your positive energy! That's wonderful to see. What's bringing you such joy today?",
+        "sad": f"Hi {name_prefix}I notice you might be feeling down right now. Remember, it's completely okay to feel this way, and you're not alone. I'm here with you.",
+        "angry": f"Hi {name_prefix}I can sense some frustration in your words. Take a deep breath with me. Your feelings are valid, and I'm here to listen.",
+        "fear": f"Hi {name_prefix}I understand you might be feeling worried or anxious. You're safe here with me, and we can work through this together.",
+        "surprise": f"Hi {name_prefix}Something seems to have caught your attention! I'd love to hear more about what's on your mind.",
+        "disgust": f"Hi {name_prefix}I can tell something is really bothering you. Your feelings are completely valid, and I'm here to listen.",
+        "neutral": f"Hi {name_prefix}I'm here to listen and support you. How are you feeling today?"
+    }
+    
+    default_response = f"Hi {name_prefix}I'm Nexa, your AI companion. I'm here to listen and understand. Please share what's on your mind."
+    response_text = fallback_responses.get(emotion, default_response) if emotion else default_response
+    
+    return {
+        "response": response_text,
+        "success": False,
+        "source": "fallback",
+        "emotion": emotion,
+        "message": "Using fallback response (Gemini unavailable)"
+    }
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -403,10 +598,23 @@ async def root():
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint"""
+    gemini_status = dependencies_loaded.get('gemini', False)
+    model_status = emotion_recognizer is not None
+    
+    overall_status = "healthy" if (model_status or gemini_status) else "degraded"
+    
+    message = []
+    if model_status:
+        message.append("Emotion model loaded")
+    if gemini_status:
+        message.append("Gemini AI available")
+    if not message:
+        message.append("Limited functionality - models not loaded")
+    
     return HealthResponse(
-        status="healthy" if emotion_recognizer else "degraded",
-        message="Service is running" if emotion_recognizer else "Model not loaded",
-        model_loaded=emotion_recognizer is not None,
+        status=overall_status,
+        message="; ".join(message),
+        model_loaded=model_status,
         dependencies=dependencies_loaded
     )
 
@@ -453,6 +661,62 @@ async def analyze_text(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+@app.post("/chat/gemini", response_model=ChatResponse)
+async def chat_with_gemini(
+    request: ChatRequest,
+    user_data = Depends(verify_token)
+):
+    """
+    Generate AI response using Gemini AI based on user message and emotion context
+    """
+    try:
+        # Generate analysis ID
+        analysis_id = str(uuid.uuid4())
+        
+        # Get user name from email if available
+        user_name = request.user_name
+        if not user_name and request.user_id:
+            # Try to extract name from email
+            if '@' in request.user_id:
+                user_name = request.user_id.split('@')[0]
+        
+        # Generate response using Gemini
+        gemini_result = await generate_gemini_response(
+            user_message=request.message,
+            detected_emotion=request.detected_emotion,
+            confidence=request.confidence,
+            user_name=user_name
+        )
+        
+        # Create audio response
+        voice_url = await create_audio_response(gemini_result["response"], analysis_id)
+        
+        return ChatResponse(
+            response=gemini_result["response"],
+            success=gemini_result["success"],
+            source=gemini_result["source"],
+            emotion=gemini_result.get("emotion"),
+            confidence=gemini_result.get("confidence"),
+            voice_response_url=voice_url,
+            analysis_id=analysis_id
+        )
+        
+    except Exception as e:
+        print(f"Chat generation failed: {e}")
+        # Fallback response
+        fallback_response = "I'm here to listen and support you. How are you feeling today?"
+        voice_url = await create_audio_response(fallback_response, analysis_id)
+        
+        return ChatResponse(
+            response=fallback_response,
+            success=False,
+            source="fallback",
+            emotion=request.detected_emotion,
+            confidence=request.confidence,
+            voice_response_url=voice_url,
+            analysis_id=analysis_id
+        )
 
 @app.post("/analyze/voice", response_model=EmotionResponse)
 async def analyze_voice(

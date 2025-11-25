@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Mic, MicOff, Send, Settings, LogOut, Square, Camera, Video, Image } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 import VoiceWaveform from './VoiceWaveform';
+import mlService from '../services/mlService';
 
 const ChatPage = () => {
   const { user, signOut } = useAuth();
@@ -133,19 +134,11 @@ const ChatPage = () => {
     try {
       setIsAnalyzingEmotion(true);
       
-      const formData = new FormData();
-      formData.append('video_file', imageBlob, 'initial_capture.jpg');
-      
-      const response = await fetch(`${import.meta.env.VITE_ML_API_BASE || 'http://localhost:8001'}/analyze/video`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer demo-token-123` },
-        body: formData
-      });
+      const emotionData = await mlService.analyzeVideo(imageBlob, user?.email || 'demo_user');
       
       setIsAnalyzingEmotion(false);
       
-      if (response.ok) {
-        const emotionData = await response.json();
+      if (emotionData) {
         const emotion = emotionData.predicted_emotion;
         const confidence = emotionData.confidence;
         
@@ -160,8 +153,30 @@ const ChatPage = () => {
           emoji: emotionEmoji[emotion.toLowerCase()] || '😌'
         });
         
-        const personalizedResponse = generatePersonalizedWelcome(emotion, userName);
-        setTimeout(() => speakText(personalizedResponse), 1500);
+        try {
+          // Generate personalized welcome using Gemini
+          const welcomeMessage = `I can see your emotion from your camera. You seem ${emotion}. Please welcome me warmly and ask how I can help you today.`;
+          
+          const geminiResponse = await mlService.generateGeminiResponse(
+            welcomeMessage,
+            user?.email || 'demo_user',
+            userName,
+            emotion,
+            confidence
+          );
+          
+          if (geminiResponse?.response) {
+            setTimeout(() => speakText(geminiResponse.response), 1500);
+          } else {
+            // Fallback to original personalized response
+            const personalizedResponse = generatePersonalizedWelcome(emotion, userName);
+            setTimeout(() => speakText(personalizedResponse), 1500);
+          }
+        } catch (geminiError) {
+          console.error('Gemini welcome error:', geminiError);
+          const personalizedResponse = generatePersonalizedWelcome(emotion, userName);
+          setTimeout(() => speakText(personalizedResponse), 1500);
+        }
         
       } else {
         fallbackGreeting(userName);
@@ -258,28 +273,18 @@ const ChatPage = () => {
       const messageText = inputText.trim();
       setInputText('');
       
-      // Analyze emotion and respond
+      // Analyze emotion and get Gemini response
       try {
         setIsAnalyzingEmotion(true);
         
-        const response = await fetch(`${import.meta.env.VITE_ML_API_BASE || 'http://localhost:8001'}/analyze/text`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer demo-token-123`
-          },
-          body: JSON.stringify({
-            text: messageText,
-            user_id: user?.email || 'demo_user'
-          })
-        });
-
+        // First analyze emotion
+        const emotionResponse = await mlService.analyzeText(messageText, user?.email || 'demo_user');
+        
         setIsAnalyzingEmotion(false);
 
-        if (response.ok) {
-          const emotionData = await response.json();
-          const emotion = emotionData.predicted_emotion;
-          const confidence = emotionData.confidence;
+        if (emotionResponse) {
+          const emotion = emotionResponse.predicted_emotion;
+          const confidence = emotionResponse.confidence;
           
           const emotionEmoji = {
             'angry': '😤', 'sad': '😢', 'fear': '😰', 'happy': '😊', 
@@ -292,23 +297,91 @@ const ChatPage = () => {
             emoji: emotionEmoji[emotion.toLowerCase()] || '😌'
           });
           
+          // Get user name
           const userName = user?.email?.split('@')[0] || 'friend';
-          const emotionAwareResponse = generateEmotionalResponse(emotion, userName, messageText);
           
-          setTimeout(() => speakText(emotionAwareResponse), 800);
+          try {
+            // Generate Gemini response with emotion context
+            console.log('🔧 DEBUG: Calling Gemini API with:', { 
+              message: messageText, 
+              userId: user?.email || 'demo_user', 
+              userName, 
+              emotion, 
+              confidence,
+              authToken: mlService.authToken ? 'Present' : 'Missing'
+            });
+            
+            const geminiResponse = await mlService.generateGeminiResponse(
+              messageText,
+              user?.email || 'demo_user',
+              userName,
+              emotion,
+              confidence
+            );
+            
+            console.log('✅ DEBUG: Gemini response received:', geminiResponse);
+            
+            if (geminiResponse?.response) {
+              // Add AI response to messages
+              const aiMessage = {
+                id: messages.length + 2,
+                text: geminiResponse.response,
+                sender: 'ai',
+                timestamp: new Date(),
+                emotion: emotion,
+                confidence: confidence,
+                source: geminiResponse.source || 'gemini'
+              };
+              
+              setMessages(prev => [...prev, aiMessage]);
+              
+              // Speak the AI response
+              setTimeout(() => speakText(geminiResponse.response), 800);
+            } else {
+              throw new Error('No response from Gemini');
+            }
+            
+          } catch (geminiError) {
+            console.error('❌ DEBUG: Gemini response error:', geminiError);
+            console.log('🔄 DEBUG: Falling back to local emotional response');
+            // Use fallback response
+            const fallbackResponse = generateEmotionalResponse(emotion, userName, messageText);
+            
+            const aiMessage = {
+              id: messages.length + 2,
+              text: fallbackResponse,
+              sender: 'ai',
+              timestamp: new Date(),
+              emotion: emotion,
+              confidence: confidence,
+              source: 'fallback'
+            };
+            
+            setMessages(prev => [...prev, aiMessage]);
+            setTimeout(() => speakText(fallbackResponse), 800);
+          }
           
         } else {
-          setTimeout(() => {
-            speakText("I'm here to listen and support you. What would you like to talk about?");
-          }, 500);
+          throw new Error('Emotion analysis failed');
         }
         
       } catch (error) {
-        console.error('Error analyzing emotion:', error);
+        console.error('Error processing message:', error);
         setIsAnalyzingEmotion(false);
-        setTimeout(() => {
-          speakText("I'm here for you. Tell me more about what's on your mind.");
-        }, 500);
+        
+        // Complete fallback
+        const fallbackResponse = "I'm here to listen and support you. What would you like to talk about?";
+        
+        const aiMessage = {
+          id: messages.length + 2,
+          text: fallbackResponse,
+          sender: 'ai',
+          timestamp: new Date(),
+          source: 'error_fallback'
+        };
+        
+        setMessages(prev => [...prev, aiMessage]);
+        setTimeout(() => speakText(fallbackResponse), 500);
       }
     }
   };

@@ -107,6 +107,40 @@ class MLService {
   }
 
   /**
+   * Generate AI response using Gemini
+   */
+  async generateGeminiResponse(message, userId = null, userName = null, detectedEmotion = null, confidence = null) {
+    try {
+      console.log('🚀 DEBUG: mlService.generateGeminiResponse called with:', {
+        message, userId, userName, detectedEmotion, confidence,
+        authToken: this.authToken ? 'Present' : 'Missing',
+        apiBase: this.apiBase
+      });
+      
+      const response = await fetch(`${this.apiBase}/chat/gemini`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          message: message,
+          user_id: userId,
+          user_name: userName,
+          detected_emotion: detectedEmotion,
+          confidence: confidence
+        })
+      });
+      
+      console.log('📡 DEBUG: Response status:', response.status, response.statusText);
+      
+      const result = await this.handleResponse(response);
+      console.log('✅ DEBUG: Successful Gemini response:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ DEBUG: Gemini chat failed:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Analyze emotion from audio/voice
    */
   async analyzeVoice(audioBlob, userId = null) {

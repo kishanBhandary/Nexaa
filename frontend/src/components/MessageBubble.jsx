@@ -65,10 +65,37 @@ const MessageBubble = ({ message, isUser }) => {
               )}
             </div>
           ) : (
-            /* Enhanced Message Text */
-            <p className="text-sm sm:text-base leading-relaxed relative z-10 whitespace-pre-wrap text-white/95 font-medium">
-              {message.text}
-            </p>
+            <div className="relative z-10">
+              {/* Enhanced Message Text */}
+              <p className="text-sm sm:text-base leading-relaxed whitespace-pre-wrap text-white/95 font-medium">
+                {message.text}
+              </p>
+              
+              {/* AI Response Metadata */}
+              {!isUser && message.source && (
+                <div className="mt-3 pt-2 border-t border-gray-600/30">
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      message.source === 'gemini' 
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                        : message.source === 'fallback'
+                        ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
+                        : 'bg-gray-500/20 text-gray-300 border border-gray-500/30'
+                    }`}>
+                      {message.source === 'gemini' ? '✨ Gemini AI' : 
+                       message.source === 'fallback' ? '🔄 Emotion-based' : 
+                       '💙 Nexa AI'}
+                    </span>
+                    
+                    {message.emotion && message.confidence && (
+                      <span className="text-xs text-gray-400">
+                        {message.emotion} • {(message.confidence * 100).toFixed(0)}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
           
           {/* Enhanced Timestamp */}

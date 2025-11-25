@@ -4,6 +4,9 @@ python-multipart==0.0.6
 requests==2.31.0
 pydantic==2.5.0
 
+# Google Generative AI
+google-generativeai==0.3.2
+
 # Optional ML dependencies (install if needed)
 # numpy==1.24.3
 # opencv-python==4.8.1.78  
