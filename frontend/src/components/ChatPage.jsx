@@ -17,6 +17,16 @@ const ChatPage = () => {
   const [speechSynthesis, setSpeechSynthesis] = useState(null);
   const [hasSpokenWelcome, setHasSpokenWelcome] = useState(false);
   const [hasAnalyzedInitialEmotion, setHasAnalyzedInitialEmotion] = useState(false);
+  
+  // Camera and continuous emotion detection state
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [stream, setStream] = useState(null);
+  const [facialEmotion, setFacialEmotion] = useState(null);
+  const [textEmotion, setTextEmotion] = useState(null);
+  const [combinedEmotion, setCombinedEmotion] = useState(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const emotionIntervalRef = useRef(null);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -26,6 +36,156 @@ const ChatPage = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Start camera and continuous emotion detection on component mount
+  useEffect(() => {
+    startCameraEmotionDetection();
+    
+    // Cleanup function
+    return () => {
+      stopCameraEmotionDetection();
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  const startCameraEmotionDetection = async () => {
+    try {
+      console.log('🎥 Starting camera for continuous emotion detection...');
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          width: 640, 
+          height: 480,
+          facingMode: 'user'
+        } 
+      });
+      
+      setStream(mediaStream);
+      setIsCameraActive(true);
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current.play();
+          startContinuousEmotionDetection();
+        };
+      }
+    } catch (error) {
+      console.error('❌ Error accessing camera:', error);
+      alert('Camera access is required for emotion detection. Please allow camera permissions and refresh.');
+    }
+  };
+
+  const stopCameraEmotionDetection = () => {
+    if (emotionIntervalRef.current) {
+      clearInterval(emotionIntervalRef.current);
+      emotionIntervalRef.current = null;
+    }
+    
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    
+    setIsCameraActive(false);
+    console.log('🛑 Camera emotion detection stopped');
+  };
+
+  const startContinuousEmotionDetection = () => {
+    if (emotionIntervalRef.current) {
+      clearInterval(emotionIntervalRef.current);
+    }
+
+    // Analyze facial emotion every 2 seconds
+    emotionIntervalRef.current = setInterval(async () => {
+      if (videoRef.current && canvasRef.current && isCameraActive) {
+        try {
+          await captureFacialEmotion();
+        } catch (error) {
+          console.error('❌ Error in continuous emotion detection:', error);
+        }
+      }
+    }, 2000);
+    
+    console.log('🔄 Started continuous facial emotion detection');
+  };
+
+  const captureFacialEmotion = async () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    
+    if (!video || !canvas) return;
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    
+    return new Promise((resolve) => {
+      canvas.toBlob(async (blob) => {
+        try {
+          const emotionData = await mlService.analyzeVideo(blob, user?.email || 'demo_user');
+          
+          setFacialEmotion({
+            emotion: emotionData.predicted_emotion,
+            confidence: emotionData.confidence,
+            timestamp: new Date()
+          });
+          
+          // Combine with text emotion if available
+          updateCombinedEmotion(emotionData.predicted_emotion, emotionData.confidence);
+          
+          console.log('😊 Facial emotion detected:', emotionData.predicted_emotion, 
+                     `(${(emotionData.confidence * 100).toFixed(1)}%)`);
+          
+          resolve(emotionData);
+        } catch (error) {
+          console.error('❌ Error analyzing facial emotion:', error);
+          resolve(null);
+        }
+      }, 'image/jpeg', 0.8);
+    });
+  };
+
+  const updateCombinedEmotion = (faceEmotion, faceConfidence, textEmotion = null, textConfidence = null) => {
+    // Use text emotion if available, otherwise use facial emotion
+    // In future, we can implement sophisticated fusion algorithms
+    let finalEmotion, finalConfidence, source;
+    
+    if (textEmotion && textConfidence) {
+      // Text emotion takes precedence as it's more contextual
+      finalEmotion = textEmotion;
+      finalConfidence = textConfidence;
+      source = 'text+face';
+    } else {
+      // Use facial emotion as baseline
+      finalEmotion = faceEmotion;
+      finalConfidence = faceConfidence;
+      source = 'face';
+    }
+    
+    const emotionEmoji = {
+      'angry': '😤', 'sad': '😢', 'fear': '😰', 'happy': '😊', 
+      'surprise': '😮', 'disgust': '😖', 'neutral': '😌'
+    };
+    
+    setCombinedEmotion({
+      emotion: finalEmotion,
+      confidence: finalConfidence,
+      emoji: emotionEmoji[finalEmotion.toLowerCase()] || '😌',
+      source: source,
+      facial: { emotion: faceEmotion, confidence: faceConfidence },
+      textual: textEmotion ? { emotion: textEmotion, confidence: textConfidence } : null
+    });
+    
+    setLastDetectedEmotion({
+      emotion: finalEmotion,
+      confidence: finalConfidence,
+      emoji: emotionEmoji[finalEmotion.toLowerCase()] || '😌'
+    });
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
@@ -283,16 +443,59 @@ const ChatPage = () => {
       };
       setMessages(prev => [...prev, typingMessage]);
 
-      // Analyze emotion and get Gemini response
+      // Analyze emotion using both text and face (multimodal)
       try {
         setIsAnalyzingEmotion(true);
         
-        // First analyze emotion
-        const emotionResponse = await mlService.analyzeText(messageText, user?.email || 'demo_user');        setIsAnalyzingEmotion(false);
+        // Analyze text emotion
+        const textEmotionPromise = mlService.analyzeText(messageText, user?.email || 'demo_user');
+        
+        // Capture current facial emotion
+        const faceEmotionPromise = captureFacialEmotion();
+        
+        // Wait for both analyses
+        const [textEmotionResponse, faceEmotionResponse] = await Promise.all([
+          textEmotionPromise.catch(err => {
+            console.warn('Text emotion analysis failed:', err);
+            return null;
+          }),
+          faceEmotionPromise.catch(err => {
+            console.warn('Face emotion analysis failed:', err);
+            return null;
+          })
+        ]);
+        
+        setIsAnalyzingEmotion(false);
 
-        if (emotionResponse) {
-          const emotion = emotionResponse.predicted_emotion;
-          const confidence = emotionResponse.confidence;
+        // Combine text and facial emotions intelligently
+        let finalEmotion, finalConfidence, emotionSource;
+        
+        if (textEmotionResponse && faceEmotionResponse) {
+          // Both available - use text emotion with facial emotion as context
+          finalEmotion = textEmotionResponse.predicted_emotion;
+          finalConfidence = (textEmotionResponse.confidence + faceEmotionResponse.confidence) / 2;
+          emotionSource = 'text+face';
+          
+          console.log('🧠 Multimodal emotion:', {
+            text: `${textEmotionResponse.predicted_emotion} (${(textEmotionResponse.confidence * 100).toFixed(1)}%)`,
+            face: `${faceEmotionResponse.predicted_emotion} (${(faceEmotionResponse.confidence * 100).toFixed(1)}%)`,
+            final: `${finalEmotion} (${(finalConfidence * 100).toFixed(1)}%)`
+          });
+        } else if (textEmotionResponse) {
+          finalEmotion = textEmotionResponse.predicted_emotion;
+          finalConfidence = textEmotionResponse.confidence;
+          emotionSource = 'text';
+        } else if (faceEmotionResponse) {
+          finalEmotion = faceEmotionResponse.predicted_emotion;
+          finalConfidence = faceEmotionResponse.confidence;
+          emotionSource = 'face';
+        } else {
+          throw new Error('Both text and facial emotion analysis failed');
+        }
+
+        if (finalEmotion) {
+          const emotion = finalEmotion;
+          const confidence = finalConfidence;
           
           const emotionEmoji = {
             'angry': '😤', 'sad': '😢', 'fear': '😰', 'happy': '😊', 
@@ -585,11 +788,14 @@ const ChatPage = () => {
                     <div className="flex items-center space-x-2">
                       <span className="text-base sm:text-lg">{lastDetectedEmotion.emoji}</span>
                       <span className="text-gray-400 text-xs sm:text-sm truncate">
-                        Last emotion: {lastDetectedEmotion.emotion} • NexaModel V2 (82% accuracy)
+                        Current: {lastDetectedEmotion.emotion} • 
+                        {combinedEmotion?.source === 'text+face' ? ' Text+Face Analysis' : 
+                         combinedEmotion?.source === 'face' ? ' Facial Analysis' : 
+                         ' Text Analysis'} • {(lastDetectedEmotion.confidence * 100).toFixed(0)}% confidence
                       </span>
                     </div>
                   ) : (
-                    <span className="text-gray-400 text-xs sm:text-sm">NexaModel V2 - High-Accuracy Emotion AI Ready</span>
+                    <span className="text-gray-400 text-xs sm:text-sm">🧠 Multimodal Emotion AI - Ready for Text+Face Analysis</span>
                   )}
                 </p>
               </div>
@@ -618,6 +824,84 @@ const ChatPage = () => {
           </div>
         </div>
       </header>
+
+      {/* Camera and Emotion Detection Panel */}
+      <div className="relative bg-black/20 border-b border-white/10 p-3 sm:p-4">
+        <div className="max-w-7xl mx-auto flex items-center space-x-4">
+          {/* Camera View */}
+          <div className="relative">
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
+              className="w-20 h-15 sm:w-24 sm:h-18 rounded-lg border border-white/20 bg-black/50"
+              style={{ transform: 'scaleX(-1)' }} // Mirror for selfie view
+            />
+            <canvas ref={canvasRef} style={{ display: 'none' }} />
+            
+            {/* Camera Status Indicator */}
+            <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${
+              isCameraActive ? 'bg-green-400' : 'bg-red-400'
+            }`}>
+              <div className={`w-3 h-3 rounded-full ${
+                isCameraActive ? 'bg-green-400 animate-pulse' : 'bg-red-400'
+              }`}></div>
+            </div>
+          </div>
+
+          {/* Multimodal Emotion Display */}
+          <div className="flex-1 space-y-2">
+            <div className="flex items-center space-x-3">
+              <h3 className="text-sm font-medium text-white/80">Real-time Emotion Detection</h3>
+              {combinedEmotion && (
+                <span className="text-xs px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  {combinedEmotion.source === 'text+face' ? '🧠+😊' : combinedEmotion.source === 'face' ? '😊' : '📝'} Multimodal
+                </span>
+              )}
+            </div>
+            
+            <div className="flex items-center space-x-4 text-xs">
+              {/* Facial Emotion */}
+              <div className="flex items-center space-x-2">
+                <span className="text-blue-300">Face:</span>
+                {facialEmotion ? (
+                  <span className="text-white">
+                    {facialEmotion.emotion} {['😤', '😢', '😰', '😊', '😮', '😖', '😌'][['angry', 'sad', 'fear', 'happy', 'surprise', 'disgust', 'neutral'].indexOf(facialEmotion.emotion)] || '😌'} 
+                    ({(facialEmotion.confidence * 100).toFixed(0)}%)
+                  </span>
+                ) : (
+                  <span className="text-gray-400">Analyzing...</span>
+                )}
+              </div>
+              
+              {/* Combined Result */}
+              <div className="flex items-center space-x-2">
+                <span className="text-emerald-300">Combined:</span>
+                {combinedEmotion ? (
+                  <span className="text-white font-medium">
+                    {combinedEmotion.emotion} {combinedEmotion.emoji} ({(combinedEmotion.confidence * 100).toFixed(0)}%)
+                  </span>
+                ) : (
+                  <span className="text-gray-400">Ready</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Camera Toggle Button */}
+          <button
+            onClick={isCameraActive ? stopCameraEmotionDetection : startCameraEmotionDetection}
+            className={`p-2 rounded-lg transition-all duration-300 ${
+              isCameraActive 
+                ? 'bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30' 
+                : 'bg-green-500/20 text-green-300 border border-green-500/30 hover:bg-green-500/30'
+            }`}
+          >
+            <Video className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
 
       {/* Main Content - Mobile Optimized */}
       <div className="relative mobile-modal-z flex flex-col h-[calc(100vh-80px)] sm:h-[calc(100vh-96px)]">
