@@ -90,15 +90,21 @@ class MLService {
    */
   async analyzeText(text, userId = null) {
     try {
+      // Add timeout for faster failures
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+      
       const response = await fetch(`${this.apiBase}/analyze/text`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({
           text: text,
           user_id: userId
-        })
+        }),
+        signal: controller.signal
       });
       
+      clearTimeout(timeoutId);
       return this.handleResponse(response);
     } catch (error) {
       console.error('Text analysis failed:', error);
@@ -117,6 +123,10 @@ class MLService {
         apiBase: this.apiBase
       });
       
+      // Add timeout for faster failures  
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // Reduced to 3 second timeout for faster fallback
+      
       const response = await fetch(`${this.apiBase}/chat/gemini`, {
         method: 'POST',
         headers: this.getHeaders(),
@@ -126,9 +136,11 @@ class MLService {
           user_name: userName,
           detected_emotion: detectedEmotion,
           confidence: confidence
-        })
+        }),
+        signal: controller.signal
       });
       
+      clearTimeout(timeoutId);
       console.log('📡 DEBUG: Response status:', response.status, response.statusText);
       
       const result = await this.handleResponse(response);

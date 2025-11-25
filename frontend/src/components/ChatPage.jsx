@@ -166,16 +166,16 @@ const ChatPage = () => {
           );
           
           if (geminiResponse?.response) {
-            setTimeout(() => speakText(geminiResponse.response), 1500);
+            setTimeout(() => speakText(geminiResponse.response), 100);
           } else {
             // Fallback to original personalized response
             const personalizedResponse = generatePersonalizedWelcome(emotion, userName);
-            setTimeout(() => speakText(personalizedResponse), 1500);
+            setTimeout(() => speakText(personalizedResponse), 100);
           }
         } catch (geminiError) {
           console.error('Gemini welcome error:', geminiError);
           const personalizedResponse = generatePersonalizedWelcome(emotion, userName);
-          setTimeout(() => speakText(personalizedResponse), 1500);
+          setTimeout(() => speakText(personalizedResponse), 100);
         }
         
       } else {
@@ -273,14 +273,22 @@ const ChatPage = () => {
       const messageText = inputText.trim();
       setInputText('');
       
+      // Add typing indicator immediately for better user experience
+      const typingMessage = {
+        id: messages.length + 2,
+        text: '',
+        sender: 'ai',
+        timestamp: new Date(),
+        isTyping: true
+      };
+      setMessages(prev => [...prev, typingMessage]);
+
       // Analyze emotion and get Gemini response
       try {
         setIsAnalyzingEmotion(true);
         
         // First analyze emotion
-        const emotionResponse = await mlService.analyzeText(messageText, user?.email || 'demo_user');
-        
-        setIsAnalyzingEmotion(false);
+        const emotionResponse = await mlService.analyzeText(messageText, user?.email || 'demo_user');        setIsAnalyzingEmotion(false);
 
         if (emotionResponse) {
           const emotion = emotionResponse.predicted_emotion;
@@ -300,8 +308,24 @@ const ChatPage = () => {
           // Get user name
           const userName = user?.email?.split('@')[0] || 'friend';
           
+          // Show instant emotional response first for speed
+          const quickResponse = generateEmotionalResponse(emotion, userName, messageText);
+          const quickMessage = {
+            id: messages.length + 1,
+            text: quickResponse,
+            sender: 'ai',
+            timestamp: new Date(),
+            emotion: emotion,
+            confidence: confidence,
+            source: 'instant'
+          };
+          
+          setMessages(prev => prev.slice(0, -1).concat([quickMessage])); // Replace typing indicator
+          setTimeout(() => speakText(quickResponse), 50);
+          
+          // Then try to get Gemini response and update if successful
           try {
-            // Generate Gemini response with emotion context
+            // Generate Gemini response with emotion context (in background)
             console.log('🔧 DEBUG: Calling Gemini API with:', { 
               message: messageText, 
               userId: user?.email || 'demo_user', 
@@ -320,11 +344,11 @@ const ChatPage = () => {
             );
             
             console.log('✅ DEBUG: Gemini response received:', geminiResponse);
-            
-            if (geminiResponse?.response) {
-              // Add AI response to messages
-              const aiMessage = {
-                id: messages.length + 2,
+
+            if (geminiResponse?.response && geminiResponse.response !== quickResponse) {
+              // Update with better Gemini response only if it's different
+              const geminiMessage = {
+                id: messages.length,
                 text: geminiResponse.response,
                 sender: 'ai',
                 timestamp: new Date(),
@@ -333,35 +357,15 @@ const ChatPage = () => {
                 source: geminiResponse.source || 'gemini'
               };
               
-              setMessages(prev => [...prev, aiMessage]);
-              
-              // Speak the AI response
-              setTimeout(() => speakText(geminiResponse.response), 800);
-            } else {
-              throw new Error('No response from Gemini');
+              setMessages(prev => prev.slice(0, -1).concat([geminiMessage])); // Replace instant response
+              // Don't speak again to avoid interruption
             }
             
           } catch (geminiError) {
             console.error('❌ DEBUG: Gemini response error:', geminiError);
-            console.log('🔄 DEBUG: Falling back to local emotional response');
-            // Use fallback response
-            const fallbackResponse = generateEmotionalResponse(emotion, userName, messageText);
-            
-            const aiMessage = {
-              id: messages.length + 2,
-              text: fallbackResponse,
-              sender: 'ai',
-              timestamp: new Date(),
-              emotion: emotion,
-              confidence: confidence,
-              source: 'fallback'
-            };
-            
-            setMessages(prev => [...prev, aiMessage]);
-            setTimeout(() => speakText(fallbackResponse), 800);
-          }
-          
-        } else {
+            console.log('🔄 DEBUG: Keeping instant emotional response');
+            // Keep the instant response - no need to change anything
+          }        } else {
           throw new Error('Emotion analysis failed');
         }
         
@@ -373,15 +377,15 @@ const ChatPage = () => {
         const fallbackResponse = "I'm here to listen and support you. What would you like to talk about?";
         
         const aiMessage = {
-          id: messages.length + 2,
+          id: messages.length + 1,
           text: fallbackResponse,
           sender: 'ai',
           timestamp: new Date(),
           source: 'error_fallback'
         };
         
-        setMessages(prev => [...prev, aiMessage]);
-        setTimeout(() => speakText(fallbackResponse), 500);
+        setMessages(prev => prev.slice(0, -1).concat([aiMessage])); // Replace typing indicator
+        setTimeout(() => speakText(fallbackResponse), 25);
       }
     }
   };
