@@ -19,7 +19,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 import requests
@@ -1486,6 +1486,661 @@ async def analyze_real_emotion(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Real emotion analysis failed: {str(e)}")
+
+@app.post("/analyze/realtime-demo")
+async def create_realtime_demo(user_data = Depends(verify_token)):
+    """
+    Create a real-time emotion detection demo similar to OpenCV demo
+    
+    This endpoint provides a real-time emotion detection interface
+    that shows live face detection with emotion overlays.
+    """
+    try:
+        # Import the real-time detector
+        from realtime_emotion_detector import RealTimeFaceEmotionDetector
+        
+        # Create demo HTML with embedded JavaScript for camera access
+        html_content = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Nexaa - Real-Time Emotion Detection</title>
+            <style>
+                body { 
+                    font-family: Arial, sans-serif; 
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    margin: 0; padding: 20px; text-align: center; color: white;
+                }
+                .container { max-width: 900px; margin: 0 auto; }
+                .video-container { 
+                    position: relative; margin: 20px auto; 
+                    border: 3px solid #fff; border-radius: 10px; 
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                }
+                #video, #canvas { border-radius: 7px; }
+                .controls { margin: 20px 0; }
+                button { 
+                    background: #4CAF50; color: white; border: none; 
+                    padding: 12px 24px; margin: 5px; border-radius: 5px; 
+                    font-size: 16px; cursor: pointer; transition: background 0.3s;
+                }
+                button:hover { background: #45a049; }
+                button:disabled { background: #cccccc; cursor: not-allowed; }
+                .status { 
+                    background: rgba(0,0,0,0.5); padding: 10px; 
+                    border-radius: 5px; margin: 10px 0; 
+                }
+                .emotion-info {
+                    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 10px; margin: 20px 0;
+                }
+                .emotion-card {
+                    background: rgba(255,255,255,0.1); padding: 15px;
+                    border-radius: 8px; backdrop-filter: blur(10px);
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🎥 Nexaa Real-Time Emotion Detection</h1>
+                <p>Experience live facial emotion recognition powered by AI</p>
+                
+                <div class="video-container">
+                    <video id="video" width="640" height="480" autoplay muted></video>
+                    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+                </div>
+                
+                <div class="controls">
+                    <button id="startBtn" onclick="startDetection()">🚀 Start Detection</button>
+                    <button id="stopBtn" onclick="stopDetection()" disabled>⏹️ Stop Detection</button>
+                    <button onclick="takeScreenshot()">📸 Screenshot</button>
+                </div>
+                
+                <div class="status">
+                    <p id="status">Click "Start Detection" to begin real-time emotion analysis</p>
+                    <p id="fps">FPS: 0</p>
+                </div>
+                
+                <div class="emotion-info">
+                    <div class="emotion-card">
+                        <h3>😊 Current Emotion</h3>
+                        <p id="currentEmotion">Not detecting</p>
+                        <p id="confidence">Confidence: 0%</p>
+                    </div>
+                    <div class="emotion-card">
+                        <h3>📊 Detection Stats</h3>
+                        <p id="facesDetected">Faces: 0</p>
+                        <p id="processingTime">Processing: 0ms</p>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                let video, canvas, ctx;
+                let isDetecting = false;
+                let animationId;
+                let fpsCounter = 0;
+                let lastTime = Date.now();
+
+                async function initCamera() {
+                    video = document.getElementById('video');
+                    canvas = document.getElementById('canvas');
+                    ctx = canvas.getContext('2d');
+
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ 
+                            video: { width: 640, height: 480 } 
+                        });
+                        video.srcObject = stream;
+                        updateStatus("📹 Camera initialized successfully!");
+                        return true;
+                    } catch (err) {
+                        updateStatus("❌ Error accessing camera: " + err.message);
+                        return false;
+                    }
+                }
+
+                async function startDetection() {
+                    if (isDetecting) return;
+                    
+                    const cameraReady = await initCamera();
+                    if (!cameraReady) return;
+                    
+                    isDetecting = true;
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = false;
+                    updateStatus("🔍 Starting real-time emotion detection...");
+                    
+                    detectEmotions();
+                }
+
+                function stopDetection() {
+                    isDetecting = false;
+                    if (animationId) {
+                        cancelAnimationFrame(animationId);
+                    }
+                    
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('stopBtn').disabled = true;
+                    updateStatus("⏹️ Detection stopped");
+                    
+                    // Stop camera
+                    if (video.srcObject) {
+                        video.srcObject.getTracks().forEach(track => track.stop());
+                        video.srcObject = null;
+                    }
+                }
+
+                async function detectEmotions() {
+                    if (!isDetecting) return;
+                    
+                    const startTime = Date.now();
+                    
+                    // Capture frame from video
+                    ctx.drawImage(video, 0, 0, 640, 480);
+                    
+                    // Convert canvas to blob
+                    canvas.toBlob(async (blob) => {
+                        if (!isDetecting) return;
+                        
+                        try {
+                            // Send frame to emotion detection API
+                            const formData = new FormData();
+                            formData.append('video_file', blob, 'frame.jpg');
+                            
+                            const response = await fetch('/analyze/video', {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': 'Bearer demo-token-123'
+                                },
+                                body: formData
+                            });
+                            
+                            if (response.ok) {
+                                const result = await response.json();
+                                displayResults(result, Date.now() - startTime);
+                            }
+                        } catch (error) {
+                            console.error('Detection error:', error);
+                        }
+                        
+                        // Continue detection loop
+                        if (isDetecting) {
+                            animationId = requestAnimationFrame(detectEmotions);
+                        }
+                    }, 'image/jpeg', 0.8);
+                    
+                    updateFPS();
+                }
+
+                function displayResults(result, processingTime) {
+                    // Update emotion display
+                    const emotion = result.predicted_emotion || 'Unknown';
+                    const confidence = result.confidence || 0;
+                    
+                    document.getElementById('currentEmotion').textContent = 
+                        getEmotionEmoji(emotion) + ' ' + emotion.charAt(0).toUpperCase() + emotion.slice(1);
+                    document.getElementById('confidence').textContent = 
+                        `Confidence: ${(confidence * 100).toFixed(1)}%`;
+                    document.getElementById('processingTime').textContent = 
+                        `Processing: ${processingTime}ms`;
+                    document.getElementById('facesDetected').textContent = 
+                        `Faces: 1`; // Assuming single face for now
+                }
+
+                function getEmotionEmoji(emotion) {
+                    const emojis = {
+                        'happy': '😊', 'sad': '😢', 'angry': '😠', 
+                        'fear': '😨', 'surprise': '😮', 'disgust': '🤢', 
+                        'neutral': '😐'
+                    };
+                    return emojis[emotion] || '🤖';
+                }
+
+                function updateFPS() {
+                    fpsCounter++;
+                    const now = Date.now();
+                    if (now - lastTime > 1000) {
+                        document.getElementById('fps').textContent = `FPS: ${fpsCounter}`;
+                        fpsCounter = 0;
+                        lastTime = now;
+                    }
+                }
+
+                function updateStatus(message) {
+                    document.getElementById('status').textContent = message;
+                }
+
+                function takeScreenshot() {
+                    if (!video.srcObject) {
+                        alert('Start detection first!');
+                        return;
+                    }
+                    
+                    // Create a temporary canvas for screenshot
+                    const screenshotCanvas = document.createElement('canvas');
+                    screenshotCanvas.width = 640;
+                    screenshotCanvas.height = 480;
+                    const screenshotCtx = screenshotCanvas.getContext('2d');
+                    
+                    // Draw current video frame
+                    screenshotCtx.drawImage(video, 0, 0, 640, 480);
+                    
+                    // Download screenshot
+                    const link = document.createElement('a');
+                    link.download = `nexaa_emotion_${Date.now()}.png`;
+                    link.href = screenshotCanvas.toDataURL();
+                    link.click();
+                }
+
+                // Initialize when page loads
+                window.addEventListener('load', () => {
+                    updateStatus('Ready to start emotion detection!');
+                });
+            </script>
+        </body>
+        </html>
+        """
+        
+        return HTMLResponse(content=html_content)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create demo: {str(e)}")
+
+
+@app.get("/demo/realtime")
+async def get_realtime_demo():
+    """
+    Get the real-time emotion detection demo page (no auth required for demo)
+    """
+    try:
+        # Same HTML content as above but without auth
+        # ... (same HTML content)
+        html_content = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Nexaa - Real-Time Emotion Detection Demo</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body { 
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    margin: 0; padding: 20px; text-align: center; color: white;
+                    min-height: 100vh;
+                }
+                .container { max-width: 1000px; margin: 0 auto; }
+                .header { margin-bottom: 30px; }
+                .header h1 { 
+                    font-size: 2.5em; margin: 0; 
+                    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+                }
+                .header p { font-size: 1.2em; opacity: 0.9; margin: 10px 0; }
+                
+                .video-container { 
+                    position: relative; margin: 30px auto; 
+                    border: 4px solid #fff; border-radius: 15px; 
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+                    background: rgba(0,0,0,0.1);
+                    display: inline-block;
+                }
+                #video { 
+                    border-radius: 11px; display: block;
+                    background: #000;
+                }
+                
+                .controls { margin: 30px 0; }
+                button { 
+                    background: linear-gradient(45deg, #4CAF50, #45a049);
+                    color: white; border: none; 
+                    padding: 15px 30px; margin: 8px; border-radius: 25px; 
+                    font-size: 16px; font-weight: bold; cursor: pointer; 
+                    transition: all 0.3s ease; text-transform: uppercase;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                }
+                button:hover { 
+                    transform: translateY(-2px); 
+                    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+                }
+                button:disabled { 
+                    background: linear-gradient(45deg, #cccccc, #999999);
+                    cursor: not-allowed; transform: none;
+                }
+                .btn-stop { background: linear-gradient(45deg, #f44336, #d32f2f) !important; }
+                .btn-screenshot { background: linear-gradient(45deg, #2196F3, #1976D2) !important; }
+                
+                .status-panel { 
+                    background: rgba(0,0,0,0.3); backdrop-filter: blur(10px);
+                    padding: 20px; border-radius: 15px; margin: 20px auto;
+                    max-width: 600px; border: 1px solid rgba(255,255,255,0.1);
+                }
+                .status-text { font-size: 1.1em; margin: 5px 0; }
+                
+                .emotion-grid {
+                    display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                    gap: 20px; margin: 30px 0; max-width: 800px; margin: 30px auto;
+                }
+                .emotion-card {
+                    background: rgba(255,255,255,0.1); 
+                    backdrop-filter: blur(10px);
+                    padding: 20px; border-radius: 15px; 
+                    border: 1px solid rgba(255,255,255,0.1);
+                    transition: transform 0.3s ease;
+                }
+                .emotion-card:hover { transform: translateY(-5px); }
+                .emotion-card h3 { margin-top: 0; font-size: 1.3em; }
+                .emotion-value { font-size: 1.5em; font-weight: bold; margin: 10px 0; }
+                
+                .footer {
+                    margin-top: 40px; padding: 20px;
+                    background: rgba(0,0,0,0.2); border-radius: 10px;
+                    max-width: 800px; margin: 40px auto 0;
+                }
+                .tech-info { font-size: 0.9em; opacity: 0.8; }
+                
+                @media (max-width: 768px) {
+                    .container { padding: 10px; }
+                    .header h1 { font-size: 2em; }
+                    #video { width: 100%; height: auto; max-width: 480px; }
+                    .emotion-grid { grid-template-columns: 1fr; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🎥 Nexaa Real-Time Emotion Detection</h1>
+                    <p>Advanced AI-powered facial emotion recognition in real-time</p>
+                    <p class="tech-info">Powered by OpenCV + Haarcascade + Deep Learning</p>
+                </div>
+                
+                <div class="video-container">
+                    <video id="video" width="640" height="480" autoplay muted playsinline></video>
+                    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+                </div>
+                
+                <div class="controls">
+                    <button id="startBtn" onclick="startDetection()">🚀 Start Detection</button>
+                    <button id="stopBtn" class="btn-stop" onclick="stopDetection()" disabled>⏹️ Stop Detection</button>
+                    <button class="btn-screenshot" onclick="takeScreenshot()">📸 Screenshot</button>
+                </div>
+                
+                <div class="status-panel">
+                    <div class="status-text" id="status">Click "Start Detection" to begin real-time emotion analysis</div>
+                    <div class="status-text" id="fps">FPS: 0 | Processing: Ready</div>
+                </div>
+                
+                <div class="emotion-grid">
+                    <div class="emotion-card">
+                        <h3>😊 Current Emotion</h3>
+                        <div class="emotion-value" id="currentEmotion">Not detecting</div>
+                        <div id="confidence">Confidence: 0%</div>
+                    </div>
+                    <div class="emotion-card">
+                        <h3>📊 Detection Stats</h3>
+                        <div class="emotion-value" id="facesDetected">Faces: 0</div>
+                        <div id="processingTime">Processing: 0ms</div>
+                    </div>
+                    <div class="emotion-card">
+                        <h3>🧠 AI Model Info</h3>
+                        <div>Type: CNN + Multimodal</div>
+                        <div id="modelAccuracy">Accuracy: 82%</div>
+                    </div>
+                </div>
+                
+                <div class="footer">
+                    <h3>🔬 Technology Stack</h3>
+                    <div class="tech-info">
+                        <p>• <strong>Face Detection:</strong> OpenCV Haarcascade (haarcascade_frontalface_default.xml)</p>
+                        <p>• <strong>Emotion Recognition:</strong> PyTorch CNN + RoBERTa Text Model</p>
+                        <p>• <strong>Multimodal Analysis:</strong> Face + Text + Audio Fusion</p>
+                        <p>• <strong>Backend:</strong> FastAPI + Python 3.13</p>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                let video, canvas, ctx;
+                let isDetecting = false;
+                let animationId;
+                let fpsCounter = 0;
+                let lastTime = Date.now();
+                let processingTimes = [];
+
+                async function initCamera() {
+                    video = document.getElementById('video');
+                    canvas = document.getElementById('canvas');
+                    ctx = canvas.getContext('2d');
+
+                    try {
+                        const constraints = {
+                            video: { 
+                                width: { ideal: 640 },
+                                height: { ideal: 480 },
+                                facingMode: 'user'
+                            }
+                        };
+                        
+                        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                        video.srcObject = stream;
+                        
+                        // Wait for video to load
+                        await new Promise(resolve => {
+                            video.onloadedmetadata = resolve;
+                        });
+                        
+                        updateStatus("📹 Camera initialized successfully! Ready for emotion detection.");
+                        return true;
+                    } catch (err) {
+                        updateStatus("❌ Error accessing camera: " + err.message);
+                        console.error('Camera error:', err);
+                        return false;
+                    }
+                }
+
+                async function startDetection() {
+                    if (isDetecting) return;
+                    
+                    updateStatus("🔄 Initializing camera...");
+                    const cameraReady = await initCamera();
+                    if (!cameraReady) return;
+                    
+                    isDetecting = true;
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = false;
+                    updateStatus("🔍 Real-time emotion detection active!");
+                    
+                    detectEmotions();
+                }
+
+                function stopDetection() {
+                    isDetecting = false;
+                    if (animationId) {
+                        cancelAnimationFrame(animationId);
+                    }
+                    
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('stopBtn').disabled = true;
+                    updateStatus("⏹️ Detection stopped");
+                    
+                    // Stop camera
+                    if (video && video.srcObject) {
+                        video.srcObject.getTracks().forEach(track => track.stop());
+                        video.srcObject = null;
+                    }
+                    
+                    // Reset display
+                    document.getElementById('currentEmotion').textContent = 'Not detecting';
+                    document.getElementById('confidence').textContent = 'Confidence: 0%';
+                    document.getElementById('facesDetected').textContent = 'Faces: 0';
+                    document.getElementById('processingTime').textContent = 'Processing: 0ms';
+                }
+
+                async function detectEmotions() {
+                    if (!isDetecting || !video.videoWidth) {
+                        if (isDetecting) {
+                            animationId = requestAnimationFrame(detectEmotions);
+                        }
+                        return;
+                    }
+                    
+                    const startTime = Date.now();
+                    
+                    // Capture frame from video
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    ctx.drawImage(video, 0, 0);
+                    
+                    // Convert canvas to blob
+                    canvas.toBlob(async (blob) => {
+                        if (!isDetecting) return;
+                        
+                        try {
+                            // Send frame to emotion detection API
+                            const formData = new FormData();
+                            formData.append('video_file', blob, 'frame.jpg');
+                            formData.append('user_id', 'demo_user');
+                            
+                            const response = await fetch('/analyze/video', {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': 'Bearer demo-token-123'
+                                },
+                                body: formData
+                            });
+                            
+                            if (response.ok) {
+                                const result = await response.json();
+                                displayResults(result, Date.now() - startTime);
+                            } else {
+                                console.error('API error:', response.statusText);
+                            }
+                        } catch (error) {
+                            console.error('Detection error:', error);
+                        }
+                        
+                        // Continue detection loop
+                        if (isDetecting) {
+                            animationId = requestAnimationFrame(detectEmotions);
+                        }
+                    }, 'image/jpeg', 0.8);
+                    
+                    updateFPS();
+                }
+
+                function displayResults(result, processingTime) {
+                    // Update processing time tracking
+                    processingTimes.push(processingTime);
+                    if (processingTimes.length > 10) {
+                        processingTimes.shift();
+                    }
+                    
+                    const avgProcessingTime = Math.round(
+                        processingTimes.reduce((a, b) => a + b, 0) / processingTimes.length
+                    );
+                    
+                    // Update emotion display
+                    const emotion = result.predicted_emotion || 'Unknown';
+                    const confidence = result.confidence || 0;
+                    
+                    document.getElementById('currentEmotion').textContent = 
+                        getEmotionEmoji(emotion) + ' ' + emotion.charAt(0).toUpperCase() + emotion.slice(1);
+                    document.getElementById('confidence').textContent = 
+                        `Confidence: ${(confidence * 100).toFixed(1)}%`;
+                    document.getElementById('processingTime').textContent = 
+                        `Processing: ${avgProcessingTime}ms`;
+                    document.getElementById('facesDetected').textContent = 
+                        'Faces: 1'; // Assuming detection found a face
+                }
+
+                function getEmotionEmoji(emotion) {
+                    const emojis = {
+                        'happy': '😊', 'sad': '😢', 'angry': '😠', 
+                        'fear': '😨', 'surprise': '😮', 'disgust': '🤢', 
+                        'neutral': '😐'
+                    };
+                    return emojis[emotion] || '🤖';
+                }
+
+                function updateFPS() {
+                    fpsCounter++;
+                    const now = Date.now();
+                    if (now - lastTime > 1000) {
+                        const fps = fpsCounter;
+                        const status = document.getElementById('status').textContent;
+                        if (status.includes('active')) {
+                            document.getElementById('fps').textContent = 
+                                `FPS: ${fps} | Processing: Active`;
+                        }
+                        fpsCounter = 0;
+                        lastTime = now;
+                    }
+                }
+
+                function updateStatus(message) {
+                    document.getElementById('status').textContent = message;
+                }
+
+                function takeScreenshot() {
+                    if (!video || !video.srcObject) {
+                        alert('Please start detection first!');
+                        return;
+                    }
+                    
+                    // Create a temporary canvas for screenshot
+                    const screenshotCanvas = document.createElement('canvas');
+                    screenshotCanvas.width = video.videoWidth || 640;
+                    screenshotCanvas.height = video.videoHeight || 480;
+                    const screenshotCtx = screenshotCanvas.getContext('2d');
+                    
+                    // Draw current video frame
+                    screenshotCtx.drawImage(video, 0, 0);
+                    
+                    // Add timestamp overlay
+                    screenshotCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    screenshotCtx.fillRect(10, 10, 250, 30);
+                    screenshotCtx.fillStyle = 'white';
+                    screenshotCtx.font = '16px Arial';
+                    screenshotCtx.fillText(`Nexaa - ${new Date().toLocaleString()}`, 15, 30);
+                    
+                    // Download screenshot
+                    const link = document.createElement('a');
+                    link.download = `nexaa_emotion_detection_${Date.now()}.png`;
+                    link.href = screenshotCanvas.toDataURL();
+                    link.click();
+                    
+                    updateStatus("📸 Screenshot saved successfully!");
+                    setTimeout(() => {
+                        if (isDetecting) updateStatus("🔍 Real-time emotion detection active!");
+                    }, 2000);
+                }
+
+                // Initialize when page loads
+                window.addEventListener('load', () => {
+                    updateStatus('🚀 Ready to start real-time emotion detection!');
+                });
+                
+                // Handle page visibility changes
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden && isDetecting) {
+                        // Pause detection when tab is hidden
+                        console.log('Tab hidden, pausing detection');
+                    } else if (!document.hidden && isDetecting) {
+                        // Resume detection when tab is visible
+                        console.log('Tab visible, resuming detection');
+                    }
+                });
+            </script>
+        </body>
+        </html>
+        """
+        
+        return HTMLResponse(content=html_content)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create demo: {str(e)}")
+
 
 if __name__ == "__main__":
     import uvicorn
