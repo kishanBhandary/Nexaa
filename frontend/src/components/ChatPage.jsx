@@ -137,7 +137,7 @@ const ChatPage = () => {
           // Combine with text emotion if available
           updateCombinedEmotion(emotionData.predicted_emotion, emotionData.confidence);
           
-          console.log('😊 Facial emotion detected:', emotionData.predicted_emotion, 
+          console.log('📷 Continuous facial emotion detected:', emotionData.predicted_emotion, 
                      `(${(emotionData.confidence * 100).toFixed(1)}%)`);
           
           resolve(emotionData);
@@ -313,30 +313,11 @@ const ChatPage = () => {
           emoji: emotionEmoji[emotion.toLowerCase()] || '😌'
         });
         
-        try {
-          // Generate personalized welcome using Gemini
-          const welcomeMessage = `I can see your emotion from your camera. You seem ${emotion}. Please welcome me warmly and ask how I can help you today.`;
-          
-          const geminiResponse = await mlService.generateGeminiResponse(
-            welcomeMessage,
-            user?.email || 'demo_user',
-            userName,
-            emotion,
-            confidence
-          );
-          
-          if (geminiResponse?.response) {
-            setTimeout(() => speakText(geminiResponse.response), 100);
-          } else {
-            // Fallback to original personalized response
-            const personalizedResponse = generatePersonalizedWelcome(emotion, userName);
-            setTimeout(() => speakText(personalizedResponse), 100);
-          }
-        } catch (geminiError) {
-          console.error('Gemini welcome error:', geminiError);
-          const personalizedResponse = generatePersonalizedWelcome(emotion, userName);
-          setTimeout(() => speakText(personalizedResponse), 100);
-        }
+        // Use mock/stored welcome message based on detected emotion (no Gemini for welcome)
+        const personalizedResponse = generatePersonalizedWelcome(emotion, userName);
+        setTimeout(() => speakText(personalizedResponse), 100);
+        
+        console.log(`🎭 Initial emotion detected: ${emotion} (${(confidence * 100).toFixed(1)}%) - Using mock welcome message`);
         
       } else {
         fallbackGreeting(userName);
@@ -350,27 +331,28 @@ const ChatPage = () => {
   };
 
   const generatePersonalizedWelcome = (emotion, userName) => {
+    // These are MOCK/STORED welcome messages based on detected emotion
     switch (emotion.toLowerCase()) {
       case 'happy':
-        return `Nexa here, ${userName}! I can see that beautiful smile! Your happiness is absolutely radiant. What's bringing you such joy today? I'd love to celebrate with you!`;
+        return `Hello ${userName}! I can feel your positive energy through the camera 😊. Your happiness is contagious! What's bringing you such joy today? I'd love to hear about it and celebrate with you!`;
         
       case 'sad':
-        return `Nexa here, ${userName}. I can see there's some sadness in your expression. You're brave for being here, and I want you to know that you're not alone. What's been weighing on your heart?`;
+        return `Hi ${userName} 💙. I can see there might be some sadness in your expression. You're brave for being here, and I want you to know that you're not alone. Can you tell me what's been weighing on your heart?`;
         
       case 'angry':
-        return `Nexa speaking, ${userName}. I can sense some frustration. Those feelings are completely valid, and I'm here to listen. Take a deep breath with me - you're safe here. What's been bothering you?`;
+        return `Hello ${userName} 🤗. I can sense some frustration or anger. Those feelings are completely valid, and I'm here to listen without judgment. Take a deep breath with me - what's been bothering you?`;
         
       case 'fear':
-        return `Nexa here, ${userName}. I notice some worry in your expression. Remember that you're stronger than you know, and you don't have to face anything alone. What's been on your mind?`;
+        return `Hi ${userName} 🫂. I notice some worry or anxiety in your expression. Remember that you're stronger than you know, and you don't have to face anything alone. What's been on your mind?`;
 
       case 'surprise':
-        return `Nexa here, ${userName}! I can see some excitement in your expression! Something wonderful must have happened. Share what's got you so amazed!`;
+        return `Hello ${userName}! 😮 I can see some excitement or surprise in your expression! Something interesting must have happened. Share what's got you so amazed!`;
 
       case 'disgust':
-        return `Nexa speaking, ${userName}. I can sense something is bothering you deeply. Your feelings are completely valid. Let's talk about what's troubling you.`;
+        return `Hi ${userName}. I can sense something is really bothering you 😔. Your feelings are completely valid. Let's talk about what's troubling you - I'm here to help.`;
         
       default:
-        return `Nexa here, ${userName}! I can see you have a calm, thoughtful presence. I'm here with advanced emotion understanding, ready to listen to whatever you'd like to share. How are you feeling today?`;
+        return `Hello ${userName}! 😌 I can see you have a calm, thoughtful presence. I'm Nexa, your emotion-aware AI companion. I can recognize how you're feeling through your camera and provide personalized support. How are you feeling today?`;
     }
   };
 
@@ -511,31 +493,22 @@ const ChatPage = () => {
           // Get user name
           const userName = user?.email?.split('@')[0] || 'friend';
           
-          // Show instant emotional response first for speed
-          const quickResponse = generateEmotionalResponse(emotion, userName, messageText);
-          const quickMessage = {
-            id: messages.length + 1,
-            text: quickResponse,
-            sender: 'ai',
-            timestamp: new Date(),
+          console.log('🎭 Emotion Analysis Result:', {
             emotion: emotion,
-            confidence: confidence,
-            source: 'instant'
-          };
+            confidence: `${(confidence * 100).toFixed(1)}%`,
+            source: emotionSource,
+            message: messageText.substring(0, 50) + '...'
+          });
           
-          setMessages(prev => prev.slice(0, -1).concat([quickMessage])); // Replace typing indicator
-          setTimeout(() => speakText(quickResponse), 50);
-          
-          // Then try to get Gemini response and update if successful
+          // For chat messages, ALWAYS use Gemini AI (not mock responses)
           try {
-            // Generate Gemini response with emotion context (in background)
-            console.log('🔧 DEBUG: Calling Gemini API with:', { 
+            console.log('🤖 Calling Gemini API for chat response:', { 
               message: messageText, 
               userId: user?.email || 'demo_user', 
               userName, 
               emotion, 
               confidence,
-              authToken: mlService.authToken ? 'Present' : 'Missing'
+              emotionSource
             });
             
             const geminiResponse = await mlService.generateGeminiResponse(
@@ -546,28 +519,49 @@ const ChatPage = () => {
               confidence
             );
             
-            console.log('✅ DEBUG: Gemini response received:', geminiResponse);
+            console.log('✅ Gemini AI response received:', {
+              success: geminiResponse?.success,
+              source: geminiResponse?.source,
+              responseLength: geminiResponse?.response?.length || 0
+            });
 
-            if (geminiResponse?.response && geminiResponse.response !== quickResponse) {
-              // Update with better Gemini response only if it's different
+            if (geminiResponse?.response) {
+              // Use Gemini AI response
               const geminiMessage = {
-                id: messages.length,
+                id: messages.length + 1,
                 text: geminiResponse.response,
                 sender: 'ai',
                 timestamp: new Date(),
                 emotion: emotion,
                 confidence: confidence,
-                source: geminiResponse.source || 'gemini'
+                source: 'gemini',
+                emotionSource: emotionSource
               };
               
-              setMessages(prev => prev.slice(0, -1).concat([geminiMessage])); // Replace instant response
-              // Don't speak again to avoid interruption
+              setMessages(prev => prev.slice(0, -1).concat([geminiMessage])); // Replace typing indicator
+              setTimeout(() => speakText(geminiResponse.response), 100);
+            } else {
+              throw new Error('Empty Gemini response');
             }
             
           } catch (geminiError) {
-            console.error('❌ DEBUG: Gemini response error:', geminiError);
-            console.log('🔄 DEBUG: Keeping instant emotional response');
-            // Keep the instant response - no need to change anything
+            console.error('❌ Gemini AI failed for chat message:', geminiError);
+            
+            // Only use fallback if Gemini completely fails
+            const fallbackResponse = `I'm having trouble connecting to my AI brain right now. Let me try to help you anyway - I can sense you're feeling ${emotion}. Please tell me more about what's on your mind.`;
+            const fallbackMessage = {
+              id: messages.length + 1,
+              text: fallbackResponse,
+              sender: 'ai',
+              timestamp: new Date(),
+              emotion: emotion,
+              confidence: confidence,
+              source: 'fallback_error',
+              emotionSource: emotionSource
+            };
+            
+            setMessages(prev => prev.slice(0, -1).concat([fallbackMessage])); // Replace typing indicator
+            setTimeout(() => speakText(fallbackResponse), 100);
           }        } else {
           throw new Error('Emotion analysis failed');
         }

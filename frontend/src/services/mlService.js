@@ -123,9 +123,9 @@ class MLService {
         apiBase: this.apiBase
       });
       
-      // Add timeout for faster failures  
+      // Add timeout for Gemini requests
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000); // Reduced to 3 second timeout for faster fallback
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for Gemini
       
       const response = await fetch(`${this.apiBase}/chat/gemini`, {
         method: 'POST',
