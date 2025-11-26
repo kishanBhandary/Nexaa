@@ -425,59 +425,53 @@ const ChatPage = () => {
       };
       setMessages(prev => [...prev, typingMessage]);
 
-      // Analyze emotion using both text and face (multimodal)
+      // Analyze emotion using MULTIMODAL analysis (text + current camera frame)
       try {
         setIsAnalyzingEmotion(true);
         
-        // Analyze text emotion
-        const textEmotionPromise = mlService.analyzeText(messageText, user?.email || 'demo_user');
+        // Capture current frame from camera for multimodal analysis
+        let currentFaceImage = null;
+        if (videoRef.current && canvasRef.current) {
+          const video = videoRef.current;
+          const canvas = canvasRef.current;
+          
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(video, 0, 0);
+          
+          // Get the image as blob for multimodal analysis
+          currentFaceImage = await new Promise(resolve => {
+            canvas.toBlob(resolve, 'image/jpeg', 0.8);
+          });
+        }
         
-        // Capture current facial emotion
-        const faceEmotionPromise = captureFacialEmotion();
+        console.log('🤖 Starting MULTIMODAL emotion analysis:', {
+          hasText: !!messageText,
+          hasImage: !!currentFaceImage,
+          message: messageText.substring(0, 30) + '...'
+        });
         
-        // Wait for both analyses
-        const [textEmotionResponse, faceEmotionResponse] = await Promise.all([
-          textEmotionPromise.catch(err => {
-            console.warn('Text emotion analysis failed:', err);
-            return null;
-          }),
-          faceEmotionPromise.catch(err => {
-            console.warn('Face emotion analysis failed:', err);
-            return null;
-          })
-        ]);
+        // Use the trained MULTIMODAL model for emotion analysis
+        const multimodalResult = await mlService.analyzeMultimodal({
+          text: messageText,
+          imageBlob: currentFaceImage,
+          userId: user?.email || 'demo_user'
+        });
         
         setIsAnalyzingEmotion(false);
-
-        // Combine text and facial emotions intelligently
-        let finalEmotion, finalConfidence, emotionSource;
         
-        if (textEmotionResponse && faceEmotionResponse) {
-          // Both available - use text emotion with facial emotion as context
-          finalEmotion = textEmotionResponse.predicted_emotion;
-          finalConfidence = (textEmotionResponse.confidence + faceEmotionResponse.confidence) / 2;
-          emotionSource = 'text+face';
+        if (multimodalResult) {
+          const emotion = multimodalResult.predicted_emotion;
+          const confidence = multimodalResult.confidence;
           
-          console.log('🧠 Multimodal emotion:', {
-            text: `${textEmotionResponse.predicted_emotion} (${(textEmotionResponse.confidence * 100).toFixed(1)}%)`,
-            face: `${faceEmotionResponse.predicted_emotion} (${(faceEmotionResponse.confidence * 100).toFixed(1)}%)`,
-            final: `${finalEmotion} (${(finalConfidence * 100).toFixed(1)}%)`
+          console.log('🧠 MULTIMODAL Analysis Complete:', {
+            emotion: emotion,
+            confidence: `${(confidence * 100).toFixed(1)}%`,
+            analysisId: multimodalResult.analysis_id,
+            usingTrainedModel: true
           });
-        } else if (textEmotionResponse) {
-          finalEmotion = textEmotionResponse.predicted_emotion;
-          finalConfidence = textEmotionResponse.confidence;
-          emotionSource = 'text';
-        } else if (faceEmotionResponse) {
-          finalEmotion = faceEmotionResponse.predicted_emotion;
-          finalConfidence = faceEmotionResponse.confidence;
-          emotionSource = 'face';
-        } else {
-          throw new Error('Both text and facial emotion analysis failed');
-        }
-
-        if (finalEmotion) {
-          const emotion = finalEmotion;
-          const confidence = finalConfidence;
           
           const emotionEmoji = {
             'angry': '😤', 'sad': '😢', 'fear': '😰', 'happy': '😊', 
@@ -490,25 +484,21 @@ const ChatPage = () => {
             emoji: emotionEmoji[emotion.toLowerCase()] || '😌'
           });
           
+          // Update combined emotion display
+          updateCombinedEmotion(emotion, confidence, emotion, confidence);
+          
           // Get user name
           const userName = user?.email?.split('@')[0] || 'friend';
           
-          console.log('🎭 Emotion Analysis Result:', {
-            emotion: emotion,
-            confidence: `${(confidence * 100).toFixed(1)}%`,
-            source: emotionSource,
-            message: messageText.substring(0, 50) + '...'
-          });
-          
-          // For chat messages, ALWAYS use Gemini AI (not mock responses)
+          // For chat messages, ALWAYS use Gemini AI with MULTIMODAL emotion data
           try {
-            console.log('🤖 Calling Gemini API for chat response:', { 
+            console.log('🤖 Calling Gemini API with MULTIMODAL emotion data:', { 
               message: messageText, 
               userId: user?.email || 'demo_user', 
               userName, 
-              emotion, 
-              confidence,
-              emotionSource
+              emotion: emotion,
+              confidence: confidence,
+              source: 'multimodal_trained_model'
             });
             
             const geminiResponse = await mlService.generateGeminiResponse(
@@ -519,14 +509,15 @@ const ChatPage = () => {
               confidence
             );
             
-            console.log('✅ Gemini AI response received:', {
+            console.log('✅ Gemini AI response with multimodal context:', {
               success: geminiResponse?.success,
               source: geminiResponse?.source,
+              emotion: emotion,
               responseLength: geminiResponse?.response?.length || 0
             });
 
             if (geminiResponse?.response) {
-              // Use Gemini AI response
+              // Use Gemini AI response with multimodal emotion context
               const geminiMessage = {
                 id: messages.length + 1,
                 text: geminiResponse.response,
@@ -535,7 +526,8 @@ const ChatPage = () => {
                 emotion: emotion,
                 confidence: confidence,
                 source: 'gemini',
-                emotionSource: emotionSource
+                emotionSource: 'multimodal_trained_model',
+                analysisId: multimodalResult.analysis_id
               };
               
               setMessages(prev => prev.slice(0, -1).concat([geminiMessage])); // Replace typing indicator
@@ -545,10 +537,10 @@ const ChatPage = () => {
             }
             
           } catch (geminiError) {
-            console.error('❌ Gemini AI failed for chat message:', geminiError);
+            console.error('❌ Gemini AI failed for multimodal chat:', geminiError);
             
             // Only use fallback if Gemini completely fails
-            const fallbackResponse = `I'm having trouble connecting to my AI brain right now. Let me try to help you anyway - I can sense you're feeling ${emotion}. Please tell me more about what's on your mind.`;
+            const fallbackResponse = `I'm having trouble connecting to my AI brain right now. But I can see through the camera that you're feeling ${emotion} (${(confidence * 100).toFixed(1)}% confidence). Please tell me more about what's on your mind.`;
             const fallbackMessage = {
               id: messages.length + 1,
               text: fallbackResponse,
@@ -556,33 +548,34 @@ const ChatPage = () => {
               timestamp: new Date(),
               emotion: emotion,
               confidence: confidence,
-              source: 'fallback_error',
-              emotionSource: emotionSource
+              source: 'fallback_multimodal',
+              emotionSource: 'multimodal_trained_model'
             };
             
             setMessages(prev => prev.slice(0, -1).concat([fallbackMessage])); // Replace typing indicator
             setTimeout(() => speakText(fallbackResponse), 100);
           }        } else {
-          throw new Error('Emotion analysis failed');
+          throw new Error('Multimodal analysis returned no result');
         }
         
       } catch (error) {
-        console.error('Error processing message:', error);
+        console.error('❌ Multimodal emotion analysis failed:', error);
         setIsAnalyzingEmotion(false);
         
-        // Complete fallback
-        const fallbackResponse = "I'm here to listen and support you. What would you like to talk about?";
+        // Complete fallback if multimodal analysis fails
+        const fallbackResponse = "I'm having trouble analyzing your emotion right now, but I'm here to listen and support you. What would you like to talk about?";
         
         const aiMessage = {
           id: messages.length + 1,
           text: fallbackResponse,
           sender: 'ai',
           timestamp: new Date(),
-          source: 'error_fallback'
+          source: 'error_fallback',
+          emotionSource: 'multimodal_failed'
         };
         
         setMessages(prev => prev.slice(0, -1).concat([aiMessage])); // Replace typing indicator
-        setTimeout(() => speakText(fallbackResponse), 25);
+        setTimeout(() => speakText(fallbackResponse), 100);
       }
     }
   };
@@ -783,13 +776,11 @@ const ChatPage = () => {
                       <span className="text-base sm:text-lg">{lastDetectedEmotion.emoji}</span>
                       <span className="text-gray-400 text-xs sm:text-sm truncate">
                         Current: {lastDetectedEmotion.emotion} • 
-                        {combinedEmotion?.source === 'text+face' ? ' Text+Face Analysis' : 
-                         combinedEmotion?.source === 'face' ? ' Facial Analysis' : 
-                         ' Text Analysis'} • {(lastDetectedEmotion.confidence * 100).toFixed(0)}% confidence
+                        Multimodal Analysis (Face+Text) • {(lastDetectedEmotion.confidence * 100).toFixed(0)}% confidence
                       </span>
                     </div>
                   ) : (
-                    <span className="text-gray-400 text-xs sm:text-sm">🧠 Multimodal Emotion AI - Ready for Text+Face Analysis</span>
+                    <span className="text-gray-400 text-xs sm:text-sm">🧠 Trained Multimodal AI - Face+Text Emotion Analysis</span>
                   )}
                 </p>
               </div>
