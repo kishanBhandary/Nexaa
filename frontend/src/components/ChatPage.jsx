@@ -15,8 +15,8 @@ const ChatPage = () => {
   const [lastDetectedEmotion, setLastDetectedEmotion] = useState(null);
   const [recognition, setRecognition] = useState(null);
   const [speechSynthesis, setSpeechSynthesis] = useState(null);
-  const [hasSpokenWelcome, setHasSpokenWelcome] = useState(false);
-  const [hasAnalyzedInitialEmotion, setHasAnalyzedInitialEmotion] = useState(false);
+  const [hasSpokenWelcome, setHasSpokenWelcome] = useState(false); // Allow welcome voice
+  const [hasAnalyzedInitialEmotion, setHasAnalyzedInitialEmotion] = useState(false); // Allow initial emotion analysis
   
   // Camera and continuous emotion detection state
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -220,13 +220,16 @@ const ChatPage = () => {
     }
   }, []);
 
-  // Welcome message with automatic emotion capture
+  // Welcome voice message (no visual animation)
   useEffect(() => {
     if (speechSynthesis && !hasSpokenWelcome) {
       const timer = setTimeout(async () => {
         const userName = user?.email?.split('@')[0] || 'friend';
         const welcomeMessage = `Hi ${userName}, I'm Nexa, your AI companion! I can see you're here with me. Let me take a moment to understand how you're feeling right now.`;
+        
+        // Use the same speakText function for consistency
         speakText(welcomeMessage);
+        
         setHasSpokenWelcome(true);
         
         // Start emotion analysis after welcome
@@ -435,22 +438,49 @@ const ChatPage = () => {
           const video = videoRef.current;
           const canvas = canvasRef.current;
           
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(video, 0, 0);
-          
-          // Get the image as blob for multimodal analysis
-          currentFaceImage = await new Promise(resolve => {
-            canvas.toBlob(resolve, 'image/jpeg', 0.8);
+          console.log('🎥 Camera status for multimodal analysis:', {
+            videoExists: !!video,
+            canvasExists: !!canvas,
+            videoWidth: video?.videoWidth || 'No width',
+            videoHeight: video?.videoHeight || 'No height',
+            streamActive: !!video?.srcObject,
+            videoReady: video?.readyState === 4
           });
+          
+          if (video.videoWidth > 0 && video.videoHeight > 0) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            // Get the image as blob for multimodal analysis
+            currentFaceImage = await new Promise(resolve => {
+              canvas.toBlob(resolve, 'image/jpeg', 0.8);
+            });
+            
+            console.log('✅ Face image captured for multimodal analysis:', {
+              blobSize: currentFaceImage?.size || 'No blob',
+              blobType: currentFaceImage?.type || 'No type'
+            });
+          } else {
+            console.warn('⚠️ Video not ready for capture:', {
+              videoWidth: video.videoWidth,
+              videoHeight: video.videoHeight,
+              readyState: video.readyState
+            });
+          }
+        } else {
+          console.error('❌ Video or canvas ref not available for multimodal analysis');
         }
         
         console.log('🤖 Starting MULTIMODAL emotion analysis:', {
           hasText: !!messageText,
+          textLength: messageText?.length || 0,
           hasImage: !!currentFaceImage,
-          message: messageText.substring(0, 30) + '...'
+          imageSize: currentFaceImage?.size || 0,
+          message: messageText.substring(0, 50) + '...',
+          timestamp: new Date().toISOString()
         });
         
         // Use the trained MULTIMODAL model for emotion analysis
@@ -470,7 +500,10 @@ const ChatPage = () => {
             emotion: emotion,
             confidence: `${(confidence * 100).toFixed(1)}%`,
             analysisId: multimodalResult.analysis_id,
-            usingTrainedModel: true
+            usingTrainedModel: true,
+            textAnalyzed: !!messageText,
+            faceAnalyzed: !!currentFaceImage,
+            allProbabilities: multimodalResult.all_probabilities
           });
           
           const emotionEmoji = {
@@ -813,35 +846,25 @@ const ChatPage = () => {
       {/* Camera and Emotion Detection Panel */}
       <div className="relative bg-black/20 border-b border-white/10 p-3 sm:p-4">
         <div className="max-w-7xl mx-auto flex items-center space-x-4">
-          {/* Camera View */}
-          <div className="relative">
+          {/* Hidden Camera for Background Emotion Detection */}
+          <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', overflow: 'hidden' }}>
             <video
               ref={videoRef}
               autoPlay
               muted
               playsInline
-              className="w-20 h-15 sm:w-24 sm:h-18 rounded-lg border border-white/20 bg-black/50"
-              style={{ transform: 'scaleX(-1)' }} // Mirror for selfie view
+              style={{ width: '640px', height: '480px', visibility: 'hidden' }}
             />
-            <canvas ref={canvasRef} style={{ display: 'none' }} />
-            
-            {/* Camera Status Indicator */}
-            <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${
-              isCameraActive ? 'bg-green-400' : 'bg-red-400'
-            }`}>
-              <div className={`w-3 h-3 rounded-full ${
-                isCameraActive ? 'bg-green-400 animate-pulse' : 'bg-red-400'
-              }`}></div>
-            </div>
+            <canvas ref={canvasRef} style={{ width: '640px', height: '480px', visibility: 'hidden' }} />
           </div>
 
-          {/* Multimodal Emotion Display */}
+          {/* Emotion Detection Status - Minimal Design */}
           <div className="flex-1 space-y-2">
             <div className="flex items-center space-x-3">
-              <h3 className="text-sm font-medium text-white/80">Real-time Emotion Detection</h3>
+              <h3 className="text-sm font-medium text-white/80">AI Emotion Analysis</h3>
               {combinedEmotion && (
                 <span className="text-xs px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  {combinedEmotion.source === 'text+face' ? '🧠+😊' : combinedEmotion.source === 'face' ? '😊' : '📝'} Multimodal
+                  🧠 Background Analysis Active
                 </span>
               )}
             </div>
@@ -930,7 +953,7 @@ const ChatPage = () => {
                         AI
                       </div>
                       <div className="flex-1">
-                        <span className="text-emerald-300 font-medium text-sm sm:text-base">Speaking with empathy...</span>
+                        <span className="text-emerald-300 font-medium text-sm sm:text-base">AI Assistant</span>
                       </div>
                     </div>
                     <div className="h-16 sm:h-20 relative">
@@ -943,10 +966,10 @@ const ChatPage = () => {
           )}
         </div>
 
-        {/* Voice Waveform Animation (Welcome) - Mobile Optimized */}
-        {isAiSpeaking && !hasAnalyzedInitialEmotion && (
+        {/* Voice Waveform Animation (Welcome) - DISABLED */}
+        {/* {isAiSpeaking && !hasAnalyzedInitialEmotion && (
           <VoiceWaveform isActive={true} type="speaking" isInline={false} />
-        )}
+        )} */}
 
         {/* Input Area - Mobile Optimized */}
         <div className="relative mobile-modal-z p-3 sm:p-4 lg:p-6 border-t border-white/10 backdrop-blur-xl bg-gradient-to-t from-black/20 to-transparent safe-area-bottom">

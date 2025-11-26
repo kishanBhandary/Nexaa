@@ -115,6 +115,11 @@ class NexaModelV2:
             if not self.models_loaded:
                 return self._fallback_text_emotion(text)
             
+            # Preprocess text to handle neutral/technical questions better
+            processed_result = self._preprocess_neutral_content(text)
+            if processed_result:
+                return processed_result
+            
             # Use RoBERTa model for high-accuracy text emotion detection
             results = self.text_emotion_pipeline(text)
             
@@ -145,6 +150,12 @@ class NexaModelV2:
             if emotion_scores:
                 predicted_emotion = max(emotion_scores, key=emotion_scores.get)
                 confidence = emotion_scores[predicted_emotion]
+                
+                # Apply confidence threshold for low-confidence predictions
+                if confidence < 0.4 and self._is_likely_neutral(text):
+                    predicted_emotion = 'neutral'
+                    confidence = 0.65
+                    
             else:
                 predicted_emotion = 'neutral'
                 confidence = 0.7
@@ -403,26 +414,53 @@ class NexaModelV2:
     
     def _intelligent_multimodal_fusion(self, results):
         """
-        Intelligent fusion of multiple modalities with accuracy-based weighting
+        Intelligent fusion of multiple modalities with FACE-PRIORITY weighting
+        This prioritizes authentic facial expressions over potentially fake text
         """
-        # Accuracy-based weights
+        # Face-priority weights - prioritize genuine facial expressions
         modality_weights = {
-            'text': 0.45,    # Highest accuracy (87%)
-            'face': 0.35,    # Good accuracy (76%)
-            'audio': 0.20    # Lower accuracy (72%)
+            'face': 0.65,    # Highest priority - genuine expressions can't be faked
+            'text': 0.25,    # Lower priority - text can be fake/misleading  
+            'audio': 0.10    # Lowest priority for now
         }
+        
+        # Check if we have face and text together - apply anti-fake logic
+        if 'face' in results and 'text' in results:
+            face_emotion = results['face']['predicted_emotion'] 
+            text_emotion = results['text']['predicted_emotion']
+            face_confidence = results['face']['confidence']
+            text_confidence = results['text']['confidence']
+            
+            # If face and text emotions conflict and face has decent confidence
+            if face_emotion != text_emotion and face_confidence > 0.5:
+                print(f"🎭 CONFLICT DETECTED: Face={face_emotion}({face_confidence:.3f}) vs Text={text_emotion}({text_confidence:.3f})")
+                print(f"🔍 PRIORITIZING FACIAL EXPRESSION - likely fake text detected")
+                
+                # Give even more weight to face in conflict situations
+                modality_weights['face'] = 0.80
+                modality_weights['text'] = 0.15
+                modality_weights['audio'] = 0.05
         
         combined_probs = {emotion: 0.0 for emotion in self.emotion_labels}
         total_weight = 0
         weighted_confidence = 0
+        fusion_details = {}
         
         for modality, result in results.items():
-            weight = modality_weights.get(modality, 0.2)
+            weight = modality_weights.get(modality, 0.1)
             accuracy = result.get('model_accuracy', 0.7)
             
             # Adjust weight by actual model accuracy
             adjusted_weight = weight * accuracy
             total_weight += adjusted_weight
+            
+            # Track details for debugging
+            fusion_details[modality] = {
+                'emotion': result['predicted_emotion'],
+                'confidence': result['confidence'],
+                'weight': adjusted_weight,
+                'original_weight': weight
+            }
             
             # Weight the confidence
             weighted_confidence += result['confidence'] * adjusted_weight
@@ -440,14 +478,20 @@ class NexaModelV2:
         # Get final prediction
         predicted_emotion = max(combined_probs, key=combined_probs.get)
         
-        # Boost confidence for multimodal predictions
-        final_confidence = min(weighted_confidence * 1.1, 0.94)
+        # Boost confidence for multimodal predictions, especially face-priority ones
+        confidence_boost = 1.15 if 'face' in results else 1.1
+        final_confidence = min(weighted_confidence * confidence_boost, 0.94)
+        
+        print(f"🧠 MULTIMODAL FUSION RESULT: {predicted_emotion} ({final_confidence:.3f})")
+        print(f"📊 Weights used: {fusion_details}")
         
         return {
             'predicted_emotion': predicted_emotion,
             'confidence': final_confidence,
             'all_probabilities': combined_probs,
-            'method': 'intelligent_multimodal_fusion'
+            'method': 'face_priority_multimodal_fusion',
+            'fusion_details': fusion_details,
+            'weights_used': modality_weights
         }
     
     def _map_transformer_emotion(self, transformer_label):
@@ -554,6 +598,100 @@ class NexaModelV2:
             'model_accuracy': 0.78
         }
     
+    def _preprocess_neutral_content(self, text):
+        """
+        Preprocess text to identify clearly neutral content that should override transformer predictions
+        """
+        text_lower = text.lower().strip()
+        
+        # Question patterns that are clearly neutral
+        neutral_question_patterns = [
+            'what is', 'what are', 'how do', 'how does', 'how can', 'how to',
+            'when is', 'when do', 'where is', 'where can', 'why is', 'why do',
+            'explain', 'define', 'tell me about', 'describe'
+        ]
+        
+        # Technical/AI related terms that are typically neutral
+        technical_terms = [
+            'ai', 'artificial intelligence', 'machine learning', 'algorithm',
+            'programming', 'code', 'software', 'technology', 'computer',
+            'nexaa', 'api', 'data', 'model', 'neural network'
+        ]
+        
+        # Check if text starts with neutral question patterns
+        for pattern in neutral_question_patterns:
+            if text_lower.startswith(pattern):
+                # Check if it contains technical terms (high likelihood of neutral)
+                for term in technical_terms:
+                    if term in text_lower:
+                        return {
+                            'predicted_emotion': 'neutral',
+                            'confidence': 0.85,
+                            'all_probabilities': {
+                                'happy': 0.1, 'sad': 0.05, 'angry': 0.05, 'fear': 0.05, 
+                                'surprise': 0.1, 'disgust': 0.05, 'neutral': 0.6
+                            },
+                            'method': 'neutral_question_preprocessing',
+                            'model_accuracy': 0.90,
+                            'explanation': 'Detected as technical/informational question'
+                        }
+        
+        # Check for pure technical questions without obvious emotion indicators
+        if any(term in text_lower for term in technical_terms):
+            # Check if text lacks emotional keywords
+            if not self._contains_emotional_keywords(text_lower):
+                return {
+                    'predicted_emotion': 'neutral',
+                    'confidence': 0.75,
+                    'all_probabilities': {
+                        'happy': 0.12, 'sad': 0.08, 'angry': 0.08, 'fear': 0.08, 
+                        'surprise': 0.12, 'disgust': 0.08, 'neutral': 0.44
+                    },
+                    'method': 'technical_content_preprocessing',
+                    'model_accuracy': 0.85,
+                    'explanation': 'Technical content without emotional indicators'
+                }
+        
+        return None  # Continue with normal processing
+    
+    def _is_likely_neutral(self, text):
+        """
+        Check if text is likely neutral based on various indicators
+        """
+        text_lower = text.lower().strip()
+        
+        # Check for question words
+        question_indicators = ['what', 'how', 'when', 'where', 'why', 'which', 'who']
+        starts_with_question = any(text_lower.startswith(word) for word in question_indicators)
+        
+        # Check for technical content
+        technical_terms = ['ai', 'nexaa', 'algorithm', 'programming', 'technology', 'computer']
+        has_technical_content = any(term in text_lower for term in technical_terms)
+        
+        # Check length (very short messages are often neutral)
+        is_short = len(text.split()) <= 5
+        
+        # Check if it lacks strong emotional keywords
+        lacks_emotion = not self._contains_emotional_keywords(text_lower)
+        
+        return (starts_with_question and has_technical_content) or (is_short and lacks_emotion)
+    
+    def _contains_emotional_keywords(self, text_lower):
+        """
+        Check if text contains obvious emotional keywords
+        """
+        emotional_keywords = [
+            # Strong positive
+            'love', 'amazing', 'wonderful', 'fantastic', 'excited', 'happy', 'joy',
+            # Strong negative  
+            'hate', 'terrible', 'awful', 'horrible', 'sad', 'angry', 'frustrated',
+            'depressed', 'worried', 'scared', 'afraid', 'disgusting',
+            # Moderate emotions
+            'good', 'bad', 'nice', 'great', 'okay', 'fine', 'annoyed', 'tired'
+        ]
+        
+        return any(keyword in text_lower for keyword in emotional_keywords)
+
     def get_model_info(self):
         """Get comprehensive model information"""
         device = "CUDA" if torch.cuda.is_available() else "CPU"

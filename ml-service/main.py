@@ -32,6 +32,15 @@ try:
 except ImportError:
     print("⚠ python-dotenv not available, using system environment variables only")
 
+# Import face-priority analysis
+try:
+    from face_priority_analysis import analyze_face_priority_emotion
+    FACE_PRIORITY_AVAILABLE = True
+    print("✓ Face-priority analysis module loaded")
+except ImportError:
+    FACE_PRIORITY_AVAILABLE = False
+    print("⚠ Face-priority analysis not available")
+
 # Import continuous emotion recognition
 try:
     from continuous_emotion_recognition import get_continuous_recognizer, cleanup_continuous_recognizer
@@ -1486,6 +1495,56 @@ async def analyze_real_emotion(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Real emotion analysis failed: {str(e)}")
+
+@app.post("/analyze/face-priority-multimodal", response_model=EmotionResponse)
+async def analyze_face_priority_multimodal(
+    text: Optional[str] = Form(None),
+    image_file: Optional[UploadFile] = File(None),
+    user_data = Depends(verify_token)
+):
+    """
+    Enhanced multimodal emotion analysis with face priority over text
+    
+    This endpoint prevents fake emotion responses by prioritizing facial
+    expressions over text input. Perfect for detecting genuine emotions
+    when users type contradictory emotional text.
+    """
+    if not emotion_recognizer:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+    
+    if not FACE_PRIORITY_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Face-priority analysis not available")
+    
+    try:
+        analysis_id = str(uuid.uuid4())
+        
+        # Process image if provided
+        image_blob = None
+        if image_file:
+            try:
+                image_content = await image_file.read()
+                image_blob = image_content
+            except Exception as e:
+                print(f"Image processing error: {e}")
+        
+        # Use face-priority analysis
+        result = analyze_face_priority_emotion(
+            emotion_recognizer,
+            text,
+            image_blob
+        )
+        
+        # Convert to EmotionResponse format
+        return EmotionResponse(
+            predicted_emotion=result['predicted_emotion'],
+            confidence=result['confidence'],
+            all_probabilities=result['all_probabilities'],
+            voice_response_url=None,
+            analysis_id=analysis_id
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Face-priority analysis failed: {str(e)}")
 
 @app.post("/analyze/realtime-demo")
 async def create_realtime_demo(user_data = Depends(verify_token)):
