@@ -14,7 +14,7 @@
 
 The service will be available at `http://localhost:8001`
 
-## 📁 Files Overview
+## 📁 Files Overvie
 
 ### Core Files
 - **`main.py`** - Main FastAPI service with all features (emotion recognition + Gemini AI)
