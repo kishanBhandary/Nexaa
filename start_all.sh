@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # NexaModel Complete Setup Script
-# This script sets up and starts all services for the integrated system
+# This script sets up and starts all services for the integrated 
 
 echo "🚀 Starting NexaModel Integration Setup..."
 echo "========================================="
